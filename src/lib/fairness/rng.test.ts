@@ -7,12 +7,14 @@ import {
   newServerSeed,
   randomBlock,
   shuffle,
+  toHex,
   unbiasedInteger,
   unitFloat,
 } from "./rng";
 import vectors from "./test-vectors.json";
 
 const SEED = "0".repeat(63) + "1";
+const same = (a: Uint8Array, b: Uint8Array) => toHex(a) === toHex(b);
 
 function stream(nonce = 0, game = "dice", clientSeed = "player-seed") {
   return new RandomStream({ serverSeedHex: SEED, clientSeed, nonce, domain: gameDomain(game) });
@@ -20,7 +22,7 @@ function stream(nonce = 0, game = "dice", clientSeed = "player-seed") {
 
 describe("encode", () => {
   it("length-prefixes fields so different splits never collide", () => {
-    expect(encode("ab", "c").equals(encode("a", "bc"))).toBe(false);
+    expect(same(encode("ab", "c"), encode("a", "bc"))).toBe(false);
   });
   it("rejects negative and unsafe integers", () => {
     expect(() => encode(-1)).toThrow();
@@ -42,19 +44,19 @@ describe("commit", () => {
 
 describe("determinism and separation", () => {
   it("same inputs give the same block", () => {
-    expect(randomBlock(SEED, "c", 1, "d", 0).equals(randomBlock(SEED, "c", 1, "d", 0))).toBe(true);
+    expect(same(randomBlock(SEED, "c", 1, "d", 0), randomBlock(SEED, "c", 1, "d", 0))).toBe(true);
   });
   it("nonce, client seed and game domain each change the output", () => {
     const base = stream().readBytes(32);
-    expect(stream(1).readBytes(32).equals(base)).toBe(false);
-    expect(stream(0, "dice", "other").readBytes(32).equals(base)).toBe(false);
-    expect(stream(0, "roulette").readBytes(32).equals(base)).toBe(false);
+    expect(same(stream(1).readBytes(32), base)).toBe(false);
+    expect(same(stream(0, "dice", "other").readBytes(32), base)).toBe(false);
+    expect(same(stream(0, "roulette").readBytes(32), base)).toBe(false);
   });
   it("reading across block boundaries is consistent", () => {
     const a = stream().readBytes(70);
     const s = stream();
-    const b = Buffer.concat([s.readBytes(30), s.readBytes(40)]);
-    expect(a.equals(b)).toBe(true);
+    const b = new Uint8Array([...s.readBytes(30), ...s.readBytes(40)]);
+    expect(same(a, b)).toBe(true);
   });
 });
 

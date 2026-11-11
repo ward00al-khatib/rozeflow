@@ -5,7 +5,14 @@ import { useEffect, useState } from "react";
 import { useMember } from "@/lib/useMember";
 import styles from "./page.module.css";
 
-const GAMES = ["النرد", "الروليت", "بلينكو", "الألغام", "كراش", "السلوتس"];
+const GAMES: Array<{ name: string; href?: string }> = [
+  { name: "النرد", href: "/games/dice/" },
+  { name: "الروليت" },
+  { name: "بلينكو" },
+  { name: "الألغام" },
+  { name: "كراش" },
+  { name: "السلوتس" },
+];
 
 export default function Home() {
   const member = useMember();
@@ -40,12 +47,20 @@ export default function Home() {
       <p className={styles.lede}>موقع خاص بالدعوات. ست ألعاب، ونقاط افتراضية فقط، ونتائج يمكنك التحقق منها بنفسك.</p>
 
       <ul className={styles.games}>
-        {GAMES.map((g, i) => (
-          <li key={g}>
-            <span className="num">{String(i + 1).padStart(2, "0")}</span>
-            {g}
-          </li>
-        ))}
+        {GAMES.map((g, i) => {
+          const body = (
+            <>
+              <span className="num">{String(i + 1).padStart(2, "0")}</span>
+              {g.name}
+              {!g.href && <span className={styles.soon}>قريباً</span>}
+            </>
+          );
+          return (
+            <li key={g.name} className={g.href ? styles.live : undefined}>
+              {g.href ? <Link href={g.href}>{body}</Link> : body}
+            </li>
+          );
+        })}
       </ul>
 
       {linkError && <p className="error" role="alert">{linkError}</p>}
@@ -54,7 +69,7 @@ export default function Home() {
       ) : member.status === "signed_out" ? (
         <Link href="/login/" className="btn-primary">الدخول</Link>
       ) : null}
-      <p className={styles.note}>الألعاب قيد الإنشاء. الدخول بالدعوة فقط.</p>
+      <p className={styles.note}>النرد متاح الآن بنقاط تجريبية. بقية الألعاب قيد الإنشاء. الدخول بالدعوة فقط.</p>
     </main>
   );
 }

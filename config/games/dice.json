@@ -1,0 +1,20 @@
+{
+  "game_id": "dice",
+  "config_version": 1,
+  "ruleset_version": "1.0.0",
+  "units": "centi_points",
+  "stake_limits": { "min": 1000, "max": 100000 },
+  "rules": {
+    "outcome_space": 10000,
+    "win_count_bounds": { "min": 100, "max": 9500 },
+    "directions": ["under", "over"]
+  },
+  "payout_model": {
+    "target_rtp_bp": 9900,
+    "multiplier_formula": "floor(target_rtp_bp * 10000 / win_count) / 10000",
+    "max_gross_payout": 9900000,
+    "multiplier_scale": 10000,
+    "rounding": "floor_to_centi_point"
+  },
+  "fairness": { "rng_algorithm_version": "1.0", "game_domain": "rozeflow:v1:dice" }
+}

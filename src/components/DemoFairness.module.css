@@ -1,0 +1,77 @@
+.panel {
+  background: var(--sheet);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.panel summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.panel h3 {
+  font-size: 15px;
+  margin: 18px 0 8px;
+}
+
+.kv {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0;
+}
+
+.kv dt {
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+.kv dd {
+  margin: 0 0 8px;
+  font-size: 13px;
+  word-break: break-all;
+  text-align: right;
+}
+
+.rotate {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rotate input {
+  flex: 1 1 200px;
+}
+
+.revealed,
+.verify {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.verify li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.check {
+  flex-basis: 100%;
+  color: var(--ink-2);
+}
+
+.linkButton {
+  background: none;
+  border: 0;
+  color: var(--signal-ink);
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}

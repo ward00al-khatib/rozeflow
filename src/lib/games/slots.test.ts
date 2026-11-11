@@ -1,62 +1,100 @@
 import { describe, expect, it } from "vitest";
-import { SLOTS_CONFIG, linePay, parSheet, playSlots, validateSlotsStake, windowAt } from "./slots";
+import {
+  BUY_PRICE_MULTIPLIER,
+  LINES,
+  SLOTS_CONFIG,
+  exactRtp,
+  freeSpinsFor,
+  lineWin,
+  playSlots,
+  validateSlotsStake,
+  windowAt,
+} from "./slots";
 
 const SEEDS = { serverSeedHex: "9f".repeat(32), clientSeed: "player-seed", nonce: 0 };
 
-describe("slots PAR sheet (full enumeration, spec 4.3)", () => {
-  const par = parSheet();
+describe("slots ruleset 2.0: exact RTP (spec 4.3)", () => {
+  const r = exactRtp();
 
-  it("enumerates every stop combination", () => {
-    expect(par.combinations).toBe(24 ** 3);
+  it("RTP is exactly 149,359,240,023 / 156,250,000,000 = 95.5899%, inside the 94–96% policy band", () => {
+    expect(r.rtp.n).toBe(149359240023n);
+    expect(r.rtp.d).toBe(156250000000n);
+    expect(r.rtpValue).toBeGreaterThanOrEqual(0.94);
+    expect(r.rtpValue).toBeLessThanOrEqual(0.96);
   });
 
-  it("exact RTP is 91,000 / 96,000 = 94.7917%, inside the 94–96% policy band", () => {
-    expect(par.rtpNumerator * 96000).toBe(91000 * par.rtpDenominator);
-    expect(par.rtp).toBeGreaterThanOrEqual(0.94);
-    expect(par.rtp).toBeLessThanOrEqual(0.96);
+  it("matches the base RTP from the full 50^5 enumeration (scripts/slots_par.py)", () => {
+    expect(r.baseValue).toBeCloseTo(5908899 / 7812500, 12);
   });
 
-  it("contributions add up to the RTP, and the cap is never clipped", () => {
-    const sum = Object.values(par.contribution).reduce((a, b) => a + b, 0);
-    expect(Math.abs(sum - par.rtp)).toBeLessThan(1e-12);
-    expect((SLOTS_CONFIG.stake_limits.max / 5) * par.maxUnits).toBeLessThanOrEqual(SLOTS_CONFIG.payout_model.max_gross_payout);
+  it("buying the feature returns a little under the game itself", () => {
+    expect(r.buyValue).toBeCloseTo(0.94542384, 8);
+    expect(r.buyValue).toBeLessThan(r.rtpValue);
   });
 
-  it("reports hit frequency and volatility", () => {
-    expect(par.hitFrequency).toBeGreaterThan(0.5);
-    expect(par.hitFrequency).toBeLessThan(0.6);
-    expect(par.volatility).toBeGreaterThan(2);
+  it("free spins start about once in 117 spins", () => {
+    expect(r.triggerOneIn).toBeCloseTo(116.82, 1);
+  });
+
+  it("the payout cap holds the largest possible round", () => {
+    const { max } = SLOTS_CONFIG.stake_limits;
+    const maxUnits = SLOTS_CONFIG.payout_model.par.base_max_line_bet_units;
+    const lineBet = max / LINES.length;
+    expect(lineBet * maxUnits * (1 + 20 * 3)).toBeLessThanOrEqual(SLOTS_CONFIG.payout_model.max_gross_payout);
   });
 });
 
 describe("slots rounds", () => {
-  it("line pays", () => {
-    expect(linePay(["seven", "seven", "seven"])).toBe(400);
-    expect(linePay(["cherry", "cherry", "gem"])).toBe(4);
-    expect(linePay(["gem", "cherry", "cherry"])).toBe(0);
+  it("line rule: left to right, wild substitutes, scatter never pays on a line", () => {
+    expect(lineWin(["atom", "atom", "atom", "ring", "atom"])).toEqual({ symbol: "atom", count: 3, units: 50 });
+    expect(lineWin(["ring", "wild", "ring", "wild", "ring"])).toEqual({ symbol: "ring", count: 5, units: 30 });
+    expect(lineWin(["ring", "ring", "tri", "ring", "ring"])).toBeNull();
+    expect(lineWin(["scatter", "scatter", "scatter", "ring", "ring"])).toBeNull();
   });
 
-  it("window wraps around the strip", () => {
-    expect(windowAt([23, 23, 23])[1]).toEqual(windowAt([0, 0, 0])[0]);
+  it("window has five rows and wraps around the strip", () => {
+    expect(windowAt([49, 49, 49, 49, 49])[1]).toEqual(windowAt([0, 0, 0, 0, 0])[0]);
+    expect(windowAt([0, 0, 0, 0, 0])).toHaveLength(5);
+  });
+
+  it("free spins awards", () => {
+    expect([0, 1, 2, 3, 4, 5].map(freeSpinsFor)).toEqual([0, 0, 0, 10, 15, 20]);
   });
 
   it("validates the stake", () => {
     expect(() => validateSlotsStake(1000)).not.toThrow();
-    expect(() => validateSlotsStake(1001)).toThrow();
-    expect(() => validateSlotsStake(999)).toThrow();
+    expect(() => validateSlotsStake(1010)).toThrow();
+    expect(() => validateSlotsStake(980)).toThrow();
   });
 
-  it("is deterministic and pays line bets × units", () => {
-    const o = playSlots(SEEDS, 1000);
-    expect(playSlots(SEEDS, 1000)).toEqual(o);
-    expect(o.gross).toBe(200 * o.lineWins.reduce((s, w) => s + w.pay, 0));
+  it("is deterministic, and gross = line bet × units (× 3 in free spins)", () => {
+    const o = playSlots(SEEDS, { stake: 1000, buy: false });
+    expect(playSlots(SEEDS, { stake: 1000, buy: false })).toEqual(o);
+    expect(o.baseGross).toBe(50 * o.base!.units);
+    expect(o.gross).toBe(o.baseGross + 150 * o.freeSpins.reduce((s, f) => s + f.units, 0));
   });
 
-  it("observed RTP over 200k spins is near the PAR value", () => {
+  it("a bought round has no base spin, ten free spins and costs 24 × stake", () => {
+    const o = playSlots(SEEDS, { stake: 1000, buy: true });
+    expect(o.base).toBeNull();
+    expect(o.freeSpins).toHaveLength(10);
+    expect(o.cost).toBe(1000 * BUY_PRICE_MULTIPLIER);
+  });
+
+  it("observed RTP and hit frequency over 200k spins are near the PAR values", () => {
     let paid = 0;
+    let hits = 0;
+    let triggers = 0;
     const n = 200_000;
-    for (let i = 0; i < n; i++) paid += playSlots({ ...SEEDS, nonce: i }, 1000).gross;
-    // σ ≈ 2.27 per spin → 3σ/√n ≈ 0.0152
-    expect(Math.abs(paid / (n * 1000) - parSheet().rtp)).toBeLessThan(0.0152);
-  });
+    for (let i = 0; i < n; i++) {
+      const o = playSlots({ ...SEEDS, nonce: i }, { stake: 1000, buy: false });
+      paid += o.gross;
+      if (o.base!.units > 0) hits++;
+      if (o.freeSpins.length > 0) triggers++;
+    }
+    // σ ≈ 3.18 per round → 4σ/√n ≈ 0.028
+    expect(Math.abs(paid / (n * 1000) - exactRtp().rtpValue)).toBeLessThan(0.028);
+    expect(Math.abs(hits / n - SLOTS_CONFIG.payout_model.par.base_hit_frequency)).toBeLessThan(0.005);
+    expect(Math.abs(n / triggers - 116.8)).toBeLessThan(8);
+  }, 60_000);
 });

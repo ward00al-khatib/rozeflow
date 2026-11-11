@@ -18,6 +18,8 @@ export function GameFrame({
   stage,
   panel,
   below,
+  panelPosition = "side",
+  rulesTitle,
 }: {
   title: string;
   balance: number;
@@ -27,6 +29,9 @@ export function GameFrame({
   stage: ReactNode;
   panel: ReactNode;
   below?: ReactNode;
+  /** "bottom" puts the panel under the stage as a full-width control bar (slots). */
+  panelPosition?: "side" | "bottom";
+  rulesTitle?: string;
 }) {
   const sound = useSound();
   const [showRules, setShowRules] = useState(false);
@@ -83,7 +88,7 @@ export function GameFrame({
         </div>
       </header>
 
-      <div className={styles.body}>
+      <div className={`${styles.body} ${panelPosition === "bottom" ? styles.bodyBottom : ""}`}>
         <section className={styles.stage}>{stage}</section>
         <aside className={styles.panel}>{panel}</aside>
       </div>
@@ -100,9 +105,9 @@ export function GameFrame({
 
       {showRules && (
         <div className={styles.sheetBackdrop} onClick={() => setShowRules(false)}>
-          <div className={styles.sheet} role="dialog" aria-modal="true" aria-label={`قواعد ${title}`} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.sheet} role="dialog" aria-modal="true" aria-label={rulesTitle ?? `قواعد ${title}`} onClick={(e) => e.stopPropagation()}>
             <div className={styles.sheetHead}>
-              <h2>قواعد {title}</h2>
+              <h2>{rulesTitle ?? `قواعد ${title}`}</h2>
               <button type="button" className={styles.icon} onClick={() => setShowRules(false)} aria-label="إغلاق">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />

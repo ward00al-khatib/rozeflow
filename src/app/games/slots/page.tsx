@@ -1,254 +1,646 @@
 "use client";
-import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DemoFairness } from "@/components/DemoFairness";
-import { Shell } from "@/components/Shell";
+import { AutoFields, useAutoPlay, useSpaceKey, type AutoSettings } from "@/components/game/BetControls";
+import { GameFrame } from "@/components/game/GameFrame";
+import { WinBanner } from "@/components/game/WinBanner";
 import { useDemoSession, type DemoRound } from "@/lib/demo/session";
-import { SLOTS_CONFIG, parSheet, playSlots, validateSlotsStake, windowAt, type SlotSymbol, type SlotsOutcome } from "@/lib/games/slots";
+import {
+  BUY_PRICE_MULTIPLIER,
+  BUY_SPINS,
+  FS_MULTIPLIER,
+  LINES,
+  LINE_COUNT,
+  PAYS,
+  PAY_SYMBOLS,
+  SLOTS_CONFIG,
+  costOf,
+  exactRtp,
+  freeSpinsFor,
+  playSlots,
+  validateSlotsStake,
+  windowAt,
+  type SlotSymbol,
+  type SlotsBet,
+  type SlotsOutcome,
+  type SpinResult,
+} from "@/lib/games/slots";
 import { formatPoints } from "@/lib/points";
-import { useMember } from "@/lib/useMember";
+import { playSound } from "@/lib/sound";
+import { LINE_COLORS, Reels } from "./Reels";
+import { SYMBOL_NAMES, Symbol, SymbolDefs } from "./symbols";
 import styles from "./slots.module.css";
 
-const NAMES: Record<SlotSymbol, string> = {
-  seven: "سبعة",
-  bar: "بار",
-  bell: "جرس",
-  star: "نجمة",
-  gem: "جوهرة",
-  cherry: "كرز",
-};
+type Round = DemoRound<SlotsBet, SlotsOutcome>;
+type Phase = "idle" | "spinning" | "fsIntro" | "fsSpinning" | "fsOutro";
 
-function Glyph({ s }: { s: SlotSymbol }) {
-  switch (s) {
-    case "seven":
-      return (
-        <svg viewBox="0 0 40 40" className={styles.sym} aria-label={NAMES[s]}>
-          <text x="20" y="31" textAnchor="middle" fontSize="30" fontWeight="800" fill="var(--signal)" fontFamily="var(--font-mono)">
-            7
-          </text>
-        </svg>
-      );
-    case "bar":
-      return (
-        <svg viewBox="0 0 40 40" className={styles.sym} aria-label={NAMES[s]}>
-          <rect x="4" y="12" width="32" height="16" rx="3" fill="var(--ink)" />
-          <text x="20" y="24.5" textAnchor="middle" fontSize="10" fontWeight="800" fill="var(--paper)" fontFamily="var(--font-mono)">
-            BAR
-          </text>
-        </svg>
-      );
-    case "bell":
-      return (
-        <svg viewBox="0 0 40 40" className={styles.sym} aria-label={NAMES[s]}>
-          <path d="M20 6c-6 0-9 5-9 11v7l-4 5h26l-4-5v-7c0-6-3-11-9-11z" fill="#e8c35a" />
-          <circle cx="20" cy="32" r="3" fill="#e8c35a" />
-        </svg>
-      );
-    case "star":
-      return (
-        <svg viewBox="0 0 40 40" className={styles.sym} aria-label={NAMES[s]}>
-          <path d="M20 5l4.4 9.6 10.4 1.1-7.8 7 2.3 10.3L20 27.7 10.7 33l2.3-10.3-7.8-7 10.4-1.1z" fill="var(--signal-ink)" />
-        </svg>
-      );
-    case "gem":
-      return (
-        <svg viewBox="0 0 40 40" className={styles.sym} aria-label={NAMES[s]}>
-          <path d="M11 8h18l6 9-15 16L5 17z" fill="var(--win)" />
-          <path d="M5 17h30M15 8l5 25 5-25" stroke="var(--sheet)" strokeWidth="1.2" fill="none" opacity="0.5" />
-        </svg>
-      );
-    case "cherry":
-      return (
-        <svg viewBox="0 0 40 40" className={styles.sym} aria-label={NAMES[s]}>
-          <path d="M14 26C16 16 22 10 28 7M26 26c0-8-1-14 2-19" stroke="#7fb069" strokeWidth="2" fill="none" />
-          <circle cx="13" cy="28" r="6" fill="#c2455d" />
-          <circle cx="26" cy="28" r="6" fill="#c2455d" />
-        </svg>
-      );
-  }
-}
-
-const LINE_NAMES = ["الوسط", "الأعلى", "الأسفل", "قُطر ↘", "قُطر ↗"];
+const BET_STEPS = [1000, 2000, 4000, 6000, 10000, 20000, 40000, 60000, 100000]; // centi-points
+const START = windowAt([0, 10, 20, 30, 40]);
+const INTRO_KEY = "rozeflow:slots:intro-seen";
+const PAR = SLOTS_CONFIG.payout_model.par;
+const MAX_WIN = Math.round((PAR.base_max_line_bet_units * (1 + 20 * FS_MULTIPLIER)) / LINE_COUNT);
 
 export default function SlotsPage() {
-  const member = useMember();
   const demo = useDemoSession();
-  const [stakeText, setStakeText] = useState("10");
+  const rtp = useMemo(() => exactRtp(), []);
+  const [stake, setStake] = useState(2000);
+  const [turbo, setTurbo] = useState(false);
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [grid, setGrid] = useState<SlotSymbol[][]>(START);
+  const [prev, setPrev] = useState<SlotSymbol[][]>(START);
+  const [spinKey, setSpinKey] = useState(0);
+  const [round, setRound] = useState<Round | null>(null);
+  const [current, setCurrent] = useState<SpinResult | null>(null); // spin on screen once landed
+  const [fsIndex, setFsIndex] = useState(-1);
+  const [fsWin, setFsWin] = useState(0);
+  const [lastWin, setLastWin] = useState(0);
+  const [pending, setPending] = useState(0); // gross not yet shown in the balance
+  const [activeLine, setActiveLine] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [last, setLast] = useState<DemoRound<{ stake: number }, SlotsOutcome> | null>(null);
-  const [spinning, setSpinning] = useState(false);
-  const par = useMemo(() => parSheet(), []);
+  const [intro, setIntro] = useState(false);
+  const [buyOpen, setBuyOpen] = useState(false);
+  const [autoOpen, setAutoOpen] = useState(false);
+  const [auto, setAuto] = useState<AutoSettings>({ rounds: 25, stopProfit: "", stopLoss: "" });
+  const [banner, setBanner] = useState<string | null>(null);
+  const timers = useRef<number[]>([]);
 
-  const grid = last ? last.outcome.window : windowAt([11, 11, 11]);
-  const winLines = !spinning && last ? last.outcome.lineWins.map((w) => w.line) : [];
-  const winCells = new Set(
-    !spinning && last
-      ? last.outcome.lineWins.flatMap((w) => SLOTS_CONFIG.rules.lines[w.line].map((row, reel) => `${row}:${reel}`))
-      : [],
-  );
-
-  function spin() {
-    setError(null);
-    const stake = Math.round(Number(stakeText) * 100);
+  useEffect(() => {
     try {
-      validateSlotsStake(stake);
-      const round = demo.play("slots", { stake }, stake, (seeds) => {
-        const outcome = playSlots(seeds, stake);
-        return { outcome, gross: outcome.gross };
-      });
-      setSpinning(true);
-      setLast(round);
-      window.setTimeout(() => setSpinning(false), 900);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "تعذّر اللعب.");
+      if (localStorage.getItem(INTRO_KEY) !== "1") setIntro(true);
+    } catch {
+      setIntro(true);
     }
+    const t = timers.current;
+    return () => t.forEach((x) => window.clearTimeout(x));
+  }, []);
+
+  const later = (fn: () => void, ms: number) => timers.current.push(window.setTimeout(fn, ms));
+  const lineBet = stake / LINE_COUNT;
+  const busy = phase !== "idle";
+
+  /** Puts a spin on the reels; the rest happens in `landed`. */
+  function show(spin: SpinResult, from: SlotSymbol[][]) {
+    setPrev(from);
+    setGrid(spin.window);
+    setCurrent(null);
+    setActiveLine(null);
+    setSpinKey((k) => k + 1);
   }
 
-  const rounds = demo.rounds.filter((r): r is DemoRound<{ stake: number }, SlotsOutcome> => r.game === "slots");
-  const pays = SLOTS_CONFIG.payout_model.three_of_a_kind as Record<SlotSymbol, number>;
+  function play(buy: boolean): number | null {
+    setError(null);
+    const bet: SlotsBet = { stake, buy };
+    let r: Round;
+    try {
+      validateSlotsStake(stake);
+      r = demo.play("slots", bet, costOf(bet), (seeds) => {
+        const outcome = playSlots(seeds, bet);
+        return { outcome, gross: outcome.gross };
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذّر اللعب.");
+      return null;
+    }
+    setRound(r);
+    setCurrent(null);
+    setPending(r.gross);
+    setLastWin(0);
+    setFsWin(0);
+    setFsIndex(-1);
+    setBanner(null);
+    if (r.outcome.base) {
+      playSound("start");
+      setPhase("spinning");
+      show(r.outcome.base, grid);
+    } else {
+      setPhase("fsIntro");
+      later(() => startFree(r, 0, grid), 2200);
+    }
+    return r.gross - r.stake;
+  }
 
-  return (
-    <Shell member={member}>
-      <div className={styles.page}>
-        <div className={styles.titleRow}>
-          <h1 className={styles.title}>السلوتس</h1>
-          <span className={styles.demoBadge}>وضع تجريبي</span>
-        </div>
-        <p className="muted">
-          ثلاث بكرات وخمسة خطوط تلعب دائماً، وقيمة الدخول تُقسم عليها بالتساوي. العائد النظري{" "}
-          <span className="num">{(par.rtp * 100).toFixed(2)}%</span> محسوب بعدّ كل المواضع الممكنة (
-          <span className="num">{par.combinations.toLocaleString("en-US")}</span>).
-        </p>
+  function startFree(r: Round, i: number, from: SlotSymbol[][]) {
+    setPhase("fsSpinning");
+    setFsIndex(i);
+    show(r.outcome.freeSpins[i], from);
+  }
 
-        <section className={styles.machine}>
-          <div className={styles.reels} dir="ltr">
-            {[0, 1, 2].map((reel) => (
-              <div key={reel} className={`${styles.reel} ${spinning ? styles.spin : ""}`} style={{ animationDelay: `${reel * 120}ms` }}>
-                {[0, 1, 2].map((row) => (
-                  <div key={row} className={`${styles.cell} ${winCells.has(`${row}:${reel}`) ? styles.hit : ""}`}>
-                    <Glyph s={grid[row][reel]} />
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-          <p className={styles.result} aria-live="polite">
-            {spinning || !last ? (
-              <span className="muted">{spinning ? "…" : "اضغط «أدِر» للبدء."}</span>
-            ) : last.gross > 0 ? (
-              <span className={last.gross >= last.stake ? styles.win : styles.loss}>
-                {winLines.map((l) => LINE_NAMES[l]).join("، ")} · العائد <span className="num">{formatPoints(last.gross)}</span> · الصافي{" "}
-                <span className="num">
-                  {last.gross >= last.stake ? "+" : "-"}
-                  {formatPoints(Math.abs(last.gross - last.stake))}
+  function finish(r: Round) {
+    setPhase("idle");
+    setPending(0);
+    if (r.gross >= r.stake * 10) setBanner(`${r.serverSeedHash}:${r.nonce}`);
+    else if (r.gross > 0) playSound("win");
+    else playSound("lose");
+  }
+
+  const landed = useCallback(() => {
+    if (!round) return;
+    const o = round.outcome;
+    if (phase === "spinning" && o.base) {
+      const base = o.base;
+      setCurrent(base);
+      const win = base.units * lineBet;
+      setLastWin(win);
+      if (o.freeSpins.length > 0) {
+        playSound("cashout");
+        later(() => setPhase("fsIntro"), turbo ? 700 : 1300);
+        later(() => startFree(round, 0, base.window), turbo ? 2400 : 3600);
+      } else {
+        later(() => finish(round), turbo ? 150 : 450);
+      }
+      return;
+    }
+    if (phase === "fsSpinning") {
+      const spin = o.freeSpins[fsIndex];
+      setCurrent(spin);
+      const win = spin.units * lineBet * FS_MULTIPLIER;
+      if (win > 0) playSound("win");
+      setFsWin((w) => w + win);
+      const next = fsIndex + 1;
+      if (next < o.freeSpins.length) later(() => startFree(round, next, spin.window), turbo ? 450 : win > 0 ? 1300 : 650);
+      else
+        later(() => {
+          setPhase("fsOutro");
+          playSound(o.freeGross >= round.stake * 10 ? "bigWin" : "cashout");
+          later(() => {
+            setLastWin(o.gross);
+            finish(round);
+          }, 2600);
+        }, 900);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [round, phase, fsIndex, lineBet, turbo]);
+
+  // Cycle through winning lines one at a time while idle.
+  useEffect(() => {
+    if (phase !== "idle" || !current || current.lineWins.length < 2) return;
+    let i = -1;
+    const t = window.setInterval(() => {
+      i = (i + 1) % current.lineWins.length;
+      setActiveLine(current.lineWins[i].line);
+    }, 1100);
+    return () => window.clearInterval(t);
+  }, [phase, current]);
+
+  const autoplay = useAutoPlay(() => play(false), busy, turbo ? 150 : 500);
+  useSpaceKey(() => !busy && !autoplay.running && demo.ready && play(false), !intro && !buyOpen);
+
+  function stepBet(dir: 1 | -1) {
+    const i = BET_STEPS.indexOf(stake);
+    const next = BET_STEPS[Math.min(BET_STEPS.length - 1, Math.max(0, (i < 0 ? 1 : i) + dir))];
+    playSound("click");
+    setStake(next);
+  }
+
+  const rounds = useMemo(() => demo.rounds.filter((r): r is Round => r.game === "slots" && "freeSpins" in (r.outcome as object)), [demo.rounds]);
+  const inFree = phase === "fsIntro" || phase === "fsSpinning" || phase === "fsOutro";
+  const wins = current ? current.lineWins.map((w) => ({ line: w.line, count: w.count })) : [];
+  const fsTotal = round?.outcome.freeSpins.length ?? 0;
+
+  const stage = (
+    <div className={`${styles.scene} ${inFree ? styles.sceneFree : ""}`}>
+      <SymbolDefs />
+      <Decorations />
+      <div className={styles.machineTop}>
+        <span className={styles.gameName}>مختبر الليل</span>
+        {inFree ? (
+          <span className={styles.fsCounter}>
+            لفّة مجانية <span className="num">{Math.max(fsIndex + 1, 0)}/{fsTotal}</span> · الأرباح{" "}
+            <span className="num">×{FS_MULTIPLIER}</span>
+          </span>
+        ) : (
+          <span className={styles.tagline}>
+            <span className="num">{LINE_COUNT}</span> خطاً · WILD · لفّات مجانية <span className="num">×{FS_MULTIPLIER}</span>
+          </span>
+        )}
+      </div>
+      <div className={styles.machine}>
+        <Reels
+          window={grid}
+          previous={prev}
+          spinKey={spinKey}
+          turbo={turbo}
+          onStopped={landed}
+          wins={wins}
+          activeLine={activeLine}
+          dim={!!current && (current.lineWins.length > 0 || current.scatters >= 3)}
+        />
+        {current && current.lineWins.length > 0 && phase !== "fsIntro" && phase !== "fsOutro" && (
+          <div className={styles.lineAmounts} dir="ltr">
+            {current.lineWins
+              .filter((w) => activeLine === null || w.line === activeLine)
+              .slice(0, activeLine === null ? 3 : 1)
+              .map((w) => (
+                <span key={w.line} className="num" style={{ borderColor: LINE_COLORS[w.line % LINE_COLORS.length] }}>
+                  {formatPoints(w.units * lineBet * (inFree ? FS_MULTIPLIER : 1))}
                 </span>
-              </span>
-            ) : (
-              <span className={styles.loss}>
-                لا خط رابح <span className="num">-{formatPoints(last.stake)}</span>
-              </span>
-            )}
-          </p>
-        </section>
-
-        <section className={styles.controls}>
-          <div className="field">
-            <label htmlFor="stake">
-              قيمة الدخول (<span className="num">{SLOTS_CONFIG.stake_limits.min / 100}</span>–
-              <span className="num">{formatPoints(SLOTS_CONFIG.stake_limits.max)}</span> نقطة، تُقسم على{" "}
-              <span className="num">5</span> خطوط)
-            </label>
-            <input id="stake" className="input num" inputMode="decimal" value={stakeText}
-              onChange={(e) => setStakeText(e.target.value.replace(/[^0-9.]/g, ""))} />
-          </div>
-          <button type="button" className={`btn-primary ${styles.wide}`} onClick={spin} disabled={!demo.ready || spinning}>
-            أدِر
-          </button>
-          {error && <p className="error">{error}</p>}
-          <div className={styles.balance}>
-            <span>الرصيد التجريبي</span>
-            <span className="num">{formatPoints(demo.balance)}</span>
-            <button type="button" className={styles.linkButton} onClick={demo.reset}>
-              إعادة إلى <span className="num">1,000</span>
-            </button>
-          </div>
-        </section>
-
-        <details className={styles.controls}>
-          <summary className={styles.summary}>جدول الدفع وورقة PAR</summary>
-          <table className={styles.paytable}>
-            <tbody>
-              {(Object.keys(pays) as SlotSymbol[]).map((s) => (
-                <tr key={s}>
-                  <td className={styles.triple}>
-                    <Glyph s={s} />
-                    <Glyph s={s} />
-                    <Glyph s={s} />
-                  </td>
-                  <td className="num">×{pays[s]}</td>
-                  <td className="num muted">{((par.contribution[s] ?? 0) * 100).toFixed(2)}%</td>
-                </tr>
               ))}
-              <tr>
-                <td className={styles.triple}>
-                  <Glyph s="cherry" />
-                  <Glyph s="cherry" />
-                  <span className="muted">أي رمز</span>
-                </td>
-                <td className="num">×{SLOTS_CONFIG.payout_model.two_cherries_left}</td>
-                <td className="num muted">{((par.contribution.two_cherries ?? 0) * 100).toFixed(2)}%</td>
-              </tr>
-            </tbody>
-          </table>
-          <p className="muted">
-            المضاعف لكل خط من قيمة رهان الخط (الدخول ÷ 5). العمود الأخير: مساهمة كل تركيبة في العائد.
-          </p>
-          <dl className={styles.par}>
-            <div>
-              <dt>العائد النظري</dt>
-              <dd className="num">{(par.rtp * 100).toFixed(4)}%</dd>
-            </div>
-            <div>
-              <dt>تكرار الفوز</dt>
-              <dd className="num">{(par.hitFrequency * 100).toFixed(2)}%</dd>
-            </div>
-            <div>
-              <dt>التذبذب</dt>
-              <dd className="num">{par.volatility.toFixed(2)}</dd>
-            </div>
-            <div>
-              <dt>أعلى عائد</dt>
-              <dd className="num">{par.maxMultiplier.toFixed(1)}×</dd>
-            </div>
-          </dl>
-        </details>
-
-        {rounds.length > 0 && (
-          <section className={styles.controls}>
-            <h2 className={styles.h2}>آخر الجولات</h2>
-            <div className={styles.recent} dir="ltr">
-              {rounds.slice(0, 16).map((r) => (
-                <span key={`${r.serverSeedHash}:${r.nonce}`} className={`num ${r.gross >= r.stake ? styles.win : styles.loss}`}>
-                  {(r.gross / r.stake).toFixed(1)}×
-                </span>
-              ))}
-            </div>
-          </section>
+          </div>
         )}
 
+        {phase === "fsIntro" && round && (
+          <div className={styles.overlay}>
+            <div className={styles.fsCard}>
+              <Symbol s="scatter" className={styles.fsIcon} />
+              <strong>لفّات مجانية</strong>
+              <span className={`num ${styles.fsBig}`}>{round.outcome.freeSpins.length}</span>
+              <span>
+                كل الأرباح <span className="num">×{FS_MULTIPLIER}</span>
+              </span>
+            </div>
+          </div>
+        )}
+        {phase === "fsOutro" && round && (
+          <div className={styles.overlay}>
+            <div className={styles.fsCard}>
+              <strong>انتهت اللفّات المجانية</strong>
+              <span className={`num ${styles.fsBig}`}>{formatPoints(round.outcome.freeGross)}</span>
+              <span className="muted">
+                من <span className="num">{fsTotal}</span> لفّات
+              </span>
+            </div>
+          </div>
+        )}
+        {intro && (
+          <div className={styles.overlay}>
+            <div className={styles.intro}>
+              <span className={styles.introName}>مختبر الليل</span>
+              <div className={styles.introCards}>
+                <div>
+                  <span>أعلى ربح ممكن</span>
+                  <strong className="num">{MAX_WIN.toLocaleString("en-US")}×</strong>
+                </div>
+                <div>
+                  <span>التقلّب</span>
+                  <strong>متوسط</strong>
+                </div>
+                <div>
+                  <span>العائد النظري</span>
+                  <strong className="num">{(rtp.rtpValue * 100).toFixed(2)}%</strong>
+                </div>
+              </div>
+              <div className={styles.introRow}>
+                <Symbol s="wild" className={styles.introSym} />
+                <p>WILD يظهر على البكرات 2 و3 و4 ويحل محل أي رمز عدا FLOW.</p>
+              </div>
+              <div className={styles.introRow}>
+                <Symbol s="scatter" className={styles.introSym} />
+                <p>
+                  ثلاثة FLOW أو أكثر في أي مكان تفتح <span className="num">10</span> إلى <span className="num">20</span> لفّة مجانية، وكل
+                  أرباحها <span className="num">×{FS_MULTIPLIER}</span>.
+                </p>
+              </div>
+              <button
+                type="button"
+                className={styles.introGo}
+                onClick={() => {
+                  setIntro(false);
+                  try {
+                    localStorage.setItem(INTRO_KEY, "1");
+                  } catch {
+                    /* storage blocked */
+                  }
+                }}
+              >
+                ابدأ اللعب
+              </button>
+            </div>
+          </div>
+        )}
+        <WinBanner id={banner} net={round ? round.gross - round.stake : 0} multiplier={round ? round.gross / round.stake : 0} />
+      </div>
+    </div>
+  );
+
+  const panel = (
+    <div className={styles.bar}>
+      <div className={styles.barInfo}>
+        <span className={styles.barLabel}>الرصيد</span>
+        <span className={`num ${styles.barValue}`}>{formatPoints(demo.balance - pending)}</span>
+      </div>
+      <div className={`${styles.barInfo} ${styles.barWin}`} aria-live="polite">
+        {inFree ? (
+          <>
+            <span className={styles.barLabel}>ربح اللفّات المجانية</span>
+            <span className={`num ${styles.winValue}`}>{formatPoints(fsWin)}</span>
+          </>
+        ) : lastWin > 0 && phase === "idle" ? (
+          <>
+            <span className={styles.barLabel}>الربح</span>
+            <span className={`num ${styles.winValue}`}>{formatPoints(lastWin)}</span>
+          </>
+        ) : (
+          <span className={styles.barHint}>{error ?? (busy ? "بالتوفيق…" : "ضع رهانك وأدِر البكرات")}</span>
+        )}
+      </div>
+      <div className={styles.betBox}>
+        <button type="button" className={styles.round} onClick={() => stepBet(-1)} disabled={busy || autoplay.running || stake <= BET_STEPS[0]} aria-label="خفض الرهان">
+          −
+        </button>
+        <div className={styles.barInfo}>
+          <span className={styles.barLabel}>الرهان</span>
+          <span className={`num ${styles.barValue}`}>{formatPoints(stake)}</span>
+        </div>
+        <button type="button" className={styles.round} onClick={() => stepBet(1)} disabled={busy || autoplay.running || stake >= BET_STEPS[BET_STEPS.length - 1]} aria-label="رفع الرهان">
+          +
+        </button>
+      </div>
+      <div className={styles.actions}>
+        <button type="button" className={styles.buy} onClick={() => setBuyOpen(true)} disabled={busy || autoplay.running || !demo.ready}>
+          <span>شراء اللفّات</span>
+          <span className="num">{formatPoints(stake * BUY_PRICE_MULTIPLIER)}</span>
+        </button>
+        <button type="button" className={styles.round} aria-pressed={turbo} onClick={() => setTurbo((t) => !t)} aria-label="لفّ سريع" title="لفّ سريع">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="currentColor" />
+          </svg>
+        </button>
+        <div className={styles.autoWrap}>
+          <button
+            type="button"
+            className={styles.round}
+            aria-pressed={autoplay.running}
+            onClick={() => (autoplay.running ? autoplay.stop() : setAutoOpen((o) => !o))}
+            aria-label="لعب تلقائي"
+            title="لعب تلقائي"
+          >
+            {autoplay.running ? (
+              <span className="num">{autoplay.left > 0 ? autoplay.left : "∞"}</span>
+            ) : (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                <text x="12" y="15.5" textAnchor="middle" fontSize="8" fontWeight="800" fill="currentColor">
+                  A
+                </text>
+              </svg>
+            )}
+          </button>
+          {autoOpen && !autoplay.running && (
+            <div className={styles.popover}>
+              <AutoFields value={auto} onChange={setAuto} />
+              <button
+                type="button"
+                className={styles.popGo}
+                onClick={() => {
+                  setAutoOpen(false);
+                  autoplay.start(auto);
+                }}
+              >
+                ابدأ اللعب التلقائي
+              </button>
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          className={`${styles.spin} ${busy ? styles.spinning : ""}`}
+          onClick={() => (autoplay.running ? autoplay.stop() : play(false))}
+          disabled={!demo.ready || (busy && !autoplay.running) || intro}
+          aria-label={autoplay.running ? "إيقاف" : "أدِر"}
+        >
+          {autoplay.running ? (
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M19 12a7 7 0 1 1-2-4.9" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+              <path d="M19 4v4.5h-4.5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </button>
+      </div>
+
+      {buyOpen && (
+        <div className={styles.modalBack} onClick={() => setBuyOpen(false)}>
+          <div className={styles.modal} role="dialog" aria-modal="true" aria-label="شراء اللفّات المجانية" onClick={(e) => e.stopPropagation()}>
+            <Symbol s="scatter" className={styles.fsIcon} />
+            <h2>شراء اللفّات المجانية</h2>
+            <p>
+              تبدأ فوراً <span className="num">{BUY_SPINS}</span> لفّات مجانية، وكل أرباحها <span className="num">×{FS_MULTIPLIER}</span>. الرهان
+              لكل لفّة <span className="num">{formatPoints(stake)}</span>.
+            </p>
+            <div className={styles.modalPrice}>
+              <span>السعر</span>
+              <strong className="num">{formatPoints(stake * BUY_PRICE_MULTIPLIER)}</strong>
+              <span className="muted">
+                (<span className="num">{BUY_PRICE_MULTIPLIER}</span> ضعف الرهان · العائد النظري{" "}
+                <span className="num">{(rtp.buyValue * 100).toFixed(2)}%</span>)
+              </span>
+            </div>
+            <div className={styles.modalActions}>
+              <button type="button" className={styles.popGo} onClick={() => {
+                  setBuyOpen(false);
+                  play(true);
+                }}>
+                اشترِ
+              </button>
+              <button type="button" className={styles.cancel} onClick={() => setBuyOpen(false)}>
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <GameFrame
+      title="السلوتس"
+      balance={demo.balance - pending}
+      onReset={demo.reset}
+      resetDisabled={busy || autoplay.running}
+      panelPosition="bottom"
+      rulesTitle="مختبر الليل: الجدول والقواعد"
+      stage={stage}
+      panel={panel}
+      rules={<InfoSheet lineBet={lineBet} rounds={rounds} rtp={rtp} />}
+      below={
         <DemoFairness
           demo={demo}
           game="slots"
-          verify={(seeds, round) => {
-            const o = playSlots(seeds, (round.bet as { stake: number }).stake);
-            return `مواضع البكرات ${o.stops.join("، ")} ← العائد ${formatPoints(o.gross)}`;
+          verify={(seeds, r) => {
+            const bet = r.bet as SlotsBet;
+            if (typeof bet !== "object" || !("buy" in bet)) return "جولة من إصدار سابق للعبة";
+            const o = playSlots(seeds, bet);
+            const stops = o.base ? `مواضع البكرات ${o.base.stops.join("، ")}` : "شراء لفّات";
+            return `${stops}، لفّات مجانية ${o.freeSpins.length} ← العائد ${formatPoints(o.gross)}`;
           }}
         />
+      }
+    />
+  );
+}
 
-        <p className="muted">
-          <Link href="/">← كل الألعاب</Link>
-        </p>
+/** Lab props beside the machine on wide screens: test tubes with bubbles, and a slow orbit. */
+function Decorations() {
+  return (
+    <>
+      <svg className={`${styles.deco} ${styles.decoLeft}`} viewBox="0 0 170 260" aria-hidden="true">
+        <rect x="10" y="200" width="150" height="14" rx="4" fill="#24304f" />
+        <rect x="18" y="214" width="8" height="40" fill="#1a2440" />
+        <rect x="144" y="214" width="8" height="40" fill="#1a2440" />
+        {[
+          [34, "#3ecf8e", 120],
+          [72, "#a66bff", 90],
+          [110, "#ff8a1f", 140],
+          [146, "#ff8fb0", 105],
+        ].map(([x, c, h], i) => (
+          <g key={i}>
+            <rect x={(x as number) - 11} y={200 - (h as number)} width="22" height={h as number} rx="11" fill="#cfe9ff" fillOpacity="0.07" stroke="#9fb4ff" strokeOpacity="0.4" strokeWidth="2" />
+            <rect x={(x as number) - 8} y={200 - (h as number) * 0.55} width="16" height={(h as number) * 0.55 - 3} rx="8" fill={c as string} opacity="0.75" />
+            <circle className={styles.bubble} cx={x as number} cy={196} r="2.6" fill="#fff" opacity="0.8" />
+          </g>
+        ))}
+      </svg>
+      <svg className={`${styles.deco} ${styles.decoRight}`} viewBox="0 0 170 260" aria-hidden="true">
+        <circle cx="85" cy="120" r="30" fill="url(#sx-orange)" opacity="0.85" />
+        <g className={styles.orbit} fill="none" stroke="#9fb4ff" strokeOpacity="0.5" strokeWidth="2">
+          <ellipse cx="85" cy="120" rx="70" ry="24" />
+          <ellipse cx="85" cy="120" rx="70" ry="24" transform="rotate(60 85 120)" />
+          <ellipse cx="85" cy="120" rx="70" ry="24" transform="rotate(-60 85 120)" />
+          <circle cx="155" cy="120" r="5" fill="#ffd2a1" stroke="none" />
+        </g>
+        <rect x="35" y="214" width="100" height="10" rx="5" fill="#24304f" />
+      </svg>
+    </>
+  );
+}
+
+function InfoSheet({ lineBet, rounds, rtp }: { lineBet: number; rounds: Round[]; rtp: ReturnType<typeof exactRtp> }) {
+  const [tab, setTab] = useState<"pay" | "lines" | "rules" | "history">("pay");
+  return (
+    <div className={styles.info}>
+      <SymbolDefs />
+      <div className={styles.tabs} role="tablist">
+        {(
+          [
+            ["pay", "جدول الدفع"],
+            ["lines", "الخطوط"],
+            ["rules", "القواعد"],
+            ["history", "سجلّي"],
+          ] as const
+        ).map(([k, label]) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>
+            {label}
+          </button>
+        ))}
       </div>
-    </Shell>
+
+      {tab === "pay" && (
+        <>
+          <p className="muted">
+            المبالغ بالنقاط لرهانك الحالي (رهان الخط = الرهان ÷ <span className="num">{LINE_COUNT}</span>). في اللفّات المجانية تُضرب ×
+            <span className="num">{FS_MULTIPLIER}</span>.
+          </p>
+          <div className={styles.payGrid}>
+            {PAY_SYMBOLS.map((s) => (
+              <div key={s} className={styles.payItem}>
+                <Symbol s={s} className={styles.paySym} />
+                <dl>
+                  {[5, 4, 3].map((n) => (
+                    <div key={n}>
+                      <dt className="num">{n}</dt>
+                      <dd className="num">{formatPoints(Math.round(PAYS[s][n - 3] * lineBet))}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <span className={styles.payName}>{SYMBOL_NAMES[s]}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {tab === "lines" && (
+        <>
+          <p className="muted">
+            <span className="num">{LINE_COUNT}</span> خطاً تلعب دائماً. الخط يربح بثلاثة رموز متطابقة أو أكثر متتالية من البكرة الأولى (اليسرى).
+          </p>
+          <div className={styles.lineGrid} dir="ltr">
+            {LINES.map((rows, i) => (
+              <div key={i} className={styles.mini}>
+                <span className="num">{i + 1}</span>
+                <div>
+                  {Array.from({ length: 25 }, (_, k) => {
+                    const row = Math.floor(k / 5);
+                    const reel = k % 5;
+                    return <i key={k} className={rows[reel] === row ? styles.on : ""} />;
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {tab === "rules" && (
+        <div className={styles.rules}>
+          <div className={styles.introRow}>
+            <Symbol s="wild" className={styles.introSym} />
+            <p>WILD يظهر على البكرات 2 و3 و4 فقط، ويحل محل أي رمز عدا FLOW.</p>
+          </div>
+          <div className={styles.introRow}>
+            <Symbol s="scatter" className={styles.introSym} />
+            <p>
+              FLOW في أي مكان: <span className="num">3</span> = <span className="num">{freeSpinsFor(3)}</span> لفّات مجانية،{" "}
+              <span className="num">4</span> = <span className="num">{freeSpinsFor(4)}</span>، <span className="num">5</span> ={" "}
+              <span className="num">{freeSpinsFor(5)}</span>. كل أرباح اللفّات المجانية ×<span className="num">{FS_MULTIPLIER}</span>، ولا تعيد
+              تشغيل نفسها. تأتي مرة كل <span className="num">{Math.round(rtp.triggerOneIn)}</span> لفّة في المتوسط.
+            </p>
+          </div>
+          <p>
+            شراء اللفّات: <span className="num">{BUY_SPINS}</span> لفّات مجانية فوراً بسعر <span className="num">{BUY_PRICE_MULTIPLIER}</span> ضعف الرهان،
+            وعائده النظري <span className="num">{(rtp.buyValue * 100).toFixed(2)}%</span>.
+          </p>
+          <p>
+            العائد النظري للعبة <span className="num">{(rtp.rtpValue * 100).toFixed(2)}%</span>، محسوب بالضبط من البكرات وجدول الدفع وليس
+            بالمحاكاة. يأتي <span className="num">{(rtp.baseValue * 100).toFixed(2)}%</span> منه من اللفّات العادية، و
+            <span className="num">{(rtp.freeValue * 100).toFixed(2)}%</span> من اللفّات المجانية. نسبة اللفّات الرابحة{" "}
+            <span className="num">{(PAR.base_hit_frequency * 100).toFixed(1)}%</span>، وأعلى ربح ممكن في جولة{" "}
+            <span className="num">{MAX_WIN.toLocaleString("en-US")}×</span> الرهان.
+          </p>
+          <p>كل جولة، مع لفّاتها المجانية، تُحسب من بذور معلنة مسبقاً، ويمكنك التحقق منها في قسم «العدالة» أسفل الصفحة.</p>
+        </div>
+      )}
+
+      {tab === "history" && (
+        <div className={styles.history}>
+          {rounds.length === 0 ? (
+            <p className="muted">لا جولات بعد.</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>الجولة</th>
+                  <th>النوع</th>
+                  <th>الكلفة</th>
+                  <th>العائد</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rounds.slice(0, 20).map((r) => (
+                  <tr key={`${r.serverSeedHash}:${r.nonce}`}>
+                    <td>
+                      <span className="num">{r.nonce}</span>
+                    </td>
+                    <td>
+                      {r.bet.buy ? "شراء لفّات" : r.outcome.freeSpins.length > 0 ? `لفّة + ${r.outcome.freeSpins.length} مجانية` : "لفّة"}
+                    </td>
+                    <td>
+                      <span className="num">{formatPoints(r.stake)}</span>
+                    </td>
+                    <td className={r.gross > r.stake ? styles.win : styles.loss}>
+                      <span className="num">{formatPoints(r.gross)}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

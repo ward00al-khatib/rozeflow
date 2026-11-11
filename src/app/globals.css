@@ -19,9 +19,9 @@
   --void: var(--ink-2);
 
   --radius: 14px;
-  --font-body: system-ui, sans-serif;
-  --font-heading: var(--font-body);
-  --font-mono: ui-monospace, monospace;
+  --font-body: "IBM Plex Sans Arabic";
+  --font-heading: "Noto Kufi Arabic";
+  --font-mono: "JetBrains Mono";
 
   color-scheme: dark;
 }

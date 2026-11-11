@@ -1,6 +1,7 @@
 name: Supabase
 
-# Applies database migrations to the production Supabase project when they change on main,
+# Applies database migrations and deploys Edge Functions to the production Supabase project
+# when they change on main,
 # and can be run by hand (Actions → Supabase → Run workflow) to check the connection.
 #
 # Required repository secrets (Settings → Secrets and variables → Actions):
@@ -10,7 +11,7 @@ name: Supabase
 on:
   push:
     branches: [main]
-    paths: ["supabase/migrations/**", ".github/workflows/supabase.yml"]
+    paths: ["supabase/migrations/**", "supabase/functions/**", ".github/workflows/supabase.yml"]
   workflow_dispatch:
 
 concurrency:
@@ -43,3 +44,5 @@ jobs:
         run: supabase db push --password "$SUPABASE_DB_PASSWORD"
       - name: Verify schema
         run: supabase migration list --password "$SUPABASE_DB_PASSWORD"
+      - name: Deploy Edge Functions
+        run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF" --use-api

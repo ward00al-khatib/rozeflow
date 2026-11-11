@@ -8,7 +8,7 @@ import styles from "./page.module.css";
 const GAMES: Array<{ name: string; href?: string }> = [
   { name: "النرد", href: "/games/dice/" },
   { name: "الروليت", href: "/games/roulette/" },
-  { name: "بلينكو" },
+  { name: "بلينكو", href: "/games/plinko/" },
   { name: "الألغام" },
   { name: "كراش" },
   { name: "السلوتس" },
@@ -69,7 +69,7 @@ export default function Home() {
       ) : member.status === "signed_out" ? (
         <Link href="/login/" className="btn-primary">الدخول</Link>
       ) : null}
-      <p className={styles.note}>النرد والروليت متاحان الآن بنقاط تجريبية. بقية الألعاب قيد الإنشاء. الدخول بالدعوة فقط.</p>
+      <p className={styles.note}>النرد والروليت وبلينكو متاحة الآن بنقاط تجريبية. بقية الألعاب قيد الإنشاء. الدخول بالدعوة فقط.</p>
     </main>
   );
 }

@@ -31,6 +31,18 @@ export interface DemoRound<B = unknown, O = unknown> {
   at: number;
 }
 
+/** A multi-step round in progress (Mines). The stake is already taken; nothing is paid yet. */
+export interface OpenRound<B = unknown, S = unknown> {
+  game: string;
+  nonce: number;
+  serverSeedHash: string;
+  clientSeed: string;
+  bet: B;
+  stake: number;
+  state: S;
+  at: number;
+}
+
 interface DemoState {
   balance: number;
   serverSeed: string;
@@ -38,6 +50,7 @@ interface DemoState {
   nonce: number;
   rounds: DemoRound[];
   revealed: RevealedSeed[];
+  open?: OpenRound | null;
 }
 
 const KEY = "rozeflow:demo:v1";
@@ -126,8 +139,49 @@ export function useDemoSession() {
     return round;
   }
 
+  /** Starts a multi-step round: takes the stake and uses up a nonce (spec 4.2, one open round). */
+  function begin<B, S>(game: string, bet: B, stake: number, initial: S): OpenRound<B, S> {
+    if (!state) throw new Error("الجلسة لم تُحمّل بعد.");
+    if (state.open) throw new Error("لديك جولة مفتوحة. أكملها أولاً.");
+    if (stake > state.balance) throw new Error("الرصيد التجريبي لا يكفي لهذه القيمة.");
+    const open: OpenRound<B, S> = {
+      game,
+      nonce: state.nonce,
+      serverSeedHash: commitServerSeed(state.serverSeed),
+      clientSeed: state.clientSeed,
+      bet,
+      stake,
+      state: initial,
+      at: Date.now(),
+    };
+    update((s) => ({ ...s, balance: s.balance - stake, nonce: s.nonce + 1, open: open as OpenRound }));
+    return open;
+  }
+
+  /** Seed material of the open round. In demo mode the browser holds the seed; on the server it never leaves. */
+  function openSeeds() {
+    if (!state?.open) throw new Error("لا توجد جولة مفتوحة.");
+    return { serverSeedHex: state.serverSeed, clientSeed: state.open.clientSeed, nonce: state.open.nonce };
+  }
+
+  function updateOpen<S>(next: S) {
+    update((s) => (s.open ? { ...s, open: { ...s.open, state: next } } : s));
+  }
+
+  /** Settles the open round: credits the gross payout and moves it to history. */
+  function finish<O>(outcome: O, gross: number) {
+    update((s) => {
+      if (!s.open) return s;
+      const { state: _ignored, ...o } = s.open;
+      void _ignored;
+      const round: DemoRound = { ...o, outcome, gross };
+      return { ...s, balance: s.balance + gross, open: null, rounds: [round, ...s.rounds].slice(0, MAX_ROUNDS) };
+    });
+  }
+
   /** Reveal the current server seed and commit to a new one (spec 6.3). */
   function rotateSeeds(nextClientSeed?: string) {
+    if (state?.open) return; // the open round still needs this seed
     update((s) => ({
       ...s,
       revealed: [
@@ -154,7 +208,12 @@ export function useDemoSession() {
     serverSeedHash: state ? commitServerSeed(state.serverSeed) : "",
     rounds: state?.rounds ?? [],
     revealed: state?.revealed ?? [],
+    open: state?.open ?? null,
     play,
+    begin,
+    openSeeds,
+    updateOpen,
+    finish,
     rotateSeeds,
     reset,
   };

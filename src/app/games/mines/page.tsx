@@ -33,18 +33,36 @@ type Round = DemoRound<MinesBet, MinesOutcome>;
 
 function Gem() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.icon}>
-      <path d="M6 4h12l4 6-10 11L2 10z" fill="currentColor" opacity="0.9" />
-      <path d="M2 10h20M8.5 4 12 21 15.5 4" stroke="var(--sheet)" strokeWidth="1" fill="none" opacity="0.6" />
+    <svg viewBox="0 0 48 48" aria-hidden="true" className={`${styles.icon} ${styles.gemIcon}`}>
+      <defs>
+        <linearGradient id="mn-gem" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#c9ffe6" />
+          <stop offset="0.45" stopColor="#3ecf8e" />
+          <stop offset="1" stopColor="#0e7a4c" />
+        </linearGradient>
+      </defs>
+      <path d="M12 8h24l9 11-21 23L3 19z" fill="url(#mn-gem)" />
+      <path d="M12 8h24l-5 11H17z" fill="#eafff4" opacity="0.75" />
+      <path d="M3 19h42M17 19l7 23 7-23" stroke="#0a5a37" strokeOpacity="0.45" strokeWidth="1.2" fill="none" />
+      <path className={styles.glint} d="M38 4l1.6 4.4L44 10l-4.4 1.6L38 16l-1.6-4.4L32 10l4.4-1.6z" fill="#fff" />
     </svg>
   );
 }
 
 function Mine() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.icon}>
-      <circle cx="12" cy="13" r="7" fill="currentColor" />
-      <path d="M12 2v4M12 20v2M3 13H1M23 13h-2M5.5 6.5 4 5M18.5 6.5 20 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <svg viewBox="0 0 48 48" aria-hidden="true" className={styles.icon}>
+      <defs>
+        <radialGradient id="mn-mine" cx="38%" cy="32%" r="70%">
+          <stop offset="0" stopColor="#8f9bb8" />
+          <stop offset="0.5" stopColor="#3a4566" />
+          <stop offset="1" stopColor="#141a2c" />
+        </radialGradient>
+      </defs>
+      <path d="M24 3v8M24 39v6M3 25h8M37 25h8M9 10l6 6M39 10l-6 6M9 40l6-6M39 40l-6-6" stroke="#5b6788" strokeWidth="4" strokeLinecap="round" />
+      <circle cx="24" cy="25" r="14" fill="url(#mn-mine)" stroke="#0a0f1d" strokeWidth="1" />
+      <circle cx="19" cy="20" r="3.4" fill="#fff" opacity="0.55" />
+      <circle className={styles.fuse} cx="24" cy="25" r="4" fill="#ff8a1f" />
     </svg>
   );
 }
@@ -293,6 +311,7 @@ export default function MinesPage() {
   return (
     <GameFrame
       title="الألغام"
+      tint="#3ecf8e"
       onReset={demo.reset}
       resetDisabled={playing}
       stage={stage}

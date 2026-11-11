@@ -65,26 +65,124 @@
   stroke: var(--ink-3);
 }
 
-/* The head of the curve, placed over the svg's inset box. */
+/* Stars drift down and back while the rocket climbs. */
+.stars {
+  position: absolute;
+  inset: -40% 0 0 0;
+  background:
+    radial-gradient(1.6px 1.6px at 12% 20%, #fff, transparent 60%),
+    radial-gradient(1.2px 1.2px at 34% 62%, #cfe3ff, transparent 60%),
+    radial-gradient(2px 2px at 58% 34%, #fff, transparent 60%),
+    radial-gradient(1.3px 1.3px at 76% 78%, #ffd2a1, transparent 60%),
+    radial-gradient(1.6px 1.6px at 90% 14%, #fff, transparent 60%),
+    radial-gradient(1.2px 1.2px at 22% 88%, #b5f4ff, transparent 60%),
+    radial-gradient(1.4px 1.4px at 66% 8%, #fff, transparent 60%),
+    radial-gradient(1.2px 1.2px at 46% 92%, #fff, transparent 60%);
+  background-size: 420px 300px;
+  opacity: 0.45;
+  animation: starfall 9s linear infinite;
+  animation-play-state: paused;
+}
+
+.starsLive {
+  opacity: 0.9;
+  animation-play-state: running;
+}
+
+@keyframes starfall {
+  to {
+    background-position: -420px 300px;
+  }
+}
+
+/* The head of the curve, placed over the svg's inset box: the rocket, or the blast after a crash. */
 .head {
   position: absolute;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--signal);
-  box-shadow: 0 0 0 5px color-mix(in srgb, var(--signal) 25%, transparent), 0 0 22px var(--signal);
-  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
   pointer-events: none;
 }
 
-.headWin {
-  background: var(--win);
-  box-shadow: 0 0 0 5px color-mix(in srgb, var(--win) 25%, transparent);
+.rocket {
+  position: absolute;
+  width: 42px;
+  height: 64px;
+  overflow: visible;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--signal) 70%, transparent));
 }
 
-.headLoss {
-  background: var(--ink-3);
-  box-shadow: none;
+.flame {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+
+.rocketLive .flame {
+  opacity: 1;
+  animation: flame 0.14s ease-in-out infinite alternate;
+}
+
+@keyframes flame {
+  to {
+    transform: scaleY(0.5);
+  }
+}
+
+.blast {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.blast::before {
+  content: "";
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  margin: -45px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 12%, #ffd27a 30%, var(--signal) 55%, transparent 70%);
+  animation: blastCore 0.7s ease-out both;
+}
+
+.blast i {
+  position: absolute;
+  left: -2px;
+  top: -2px;
+  width: 4px;
+  height: 4px;
+}
+
+.blast i::after {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 16px;
+  border-radius: 3px;
+  background: linear-gradient(#ffd27a, var(--signal));
+  animation: shard 0.8s ease-out both;
+}
+
+@keyframes blastCore {
+  from {
+    transform: scale(0.2);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes shard {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-80px) scaleY(0.4);
+    opacity: 0;
+  }
 }
 
 .overlay {
@@ -125,5 +223,13 @@
   }
   .overlay {
     min-height: 240px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stars,
+  .rocketLive .flame,
+  .boom {
+    animation: none;
   }
 }

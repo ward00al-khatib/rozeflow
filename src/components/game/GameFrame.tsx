@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
+import { Ambient } from "@/components/fx/Ambient";
 import { useSound } from "@/lib/sound";
 import type { WinTier } from "@/lib/winTier";
 import styles from "./GameFrame.module.css";
@@ -18,6 +19,7 @@ export function GameFrame({
   panel,
   below,
   rulesTitle,
+  tint,
 }: {
   title: string;
   onReset: () => void;
@@ -27,6 +29,7 @@ export function GameFrame({
   panel: ReactNode;
   below?: ReactNode;
   rulesTitle?: string;
+  tint?: string; // the game's own colour, washed over the stage
 }) {
   const sound = useSound();
   const [showRules, setShowRules] = useState(false);
@@ -69,7 +72,10 @@ export function GameFrame({
       </header>
 
       <div className={styles.body}>
-        <section className={styles.stage}>{stage}</section>
+        <section className={styles.stage} style={tint ? ({ "--tint": tint } as CSSProperties) : undefined}>
+          {tint && <Ambient count={18} seed={title.length * 7 + 1} />}
+          {stage}
+        </section>
         <aside className={styles.panel}>{panel}</aside>
       </div>
 

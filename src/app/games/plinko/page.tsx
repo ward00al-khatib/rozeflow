@@ -129,6 +129,20 @@ export default function PlinkoPage() {
   }
   const landed = drop && !dropping ? drop.round : null;
 
+  // Pegs the ball has bounced off so far, and the path it took (both only for the board on screen).
+  const hits = new Set<string>();
+  const trail: string[] = [];
+  if (drop && drop.round.bet.rows === shownRows) {
+    let rights = 0;
+    for (let k = 0; k <= drop.step; k++) {
+      trail.push(`${(W / 2 + (rights - k / 2) * gap).toFixed(1)},${(pegY(k) - rowH / 2).toFixed(1)}`);
+      if (k < drop.step) {
+        hits.add(`${k}-${rights + 1}`);
+        rights += drop.round.outcome.path[k];
+      }
+    }
+  }
+
   const rounds = useMemo(() => demo.rounds.filter((r): r is Round => r.game === "plinko"), [demo.rounds]);
   const top = Math.max(...table);
 
@@ -147,9 +161,16 @@ export default function PlinkoPage() {
         <svg viewBox={`0 0 ${W} 330`} className={styles.svg} role="img" aria-label="لوحة بلينكو">
           {Array.from({ length: shownRows }, (_, row) =>
             Array.from({ length: row + 3 }, (_, j) => (
-              <circle key={`${row}-${j}`} cx={pegX(row, j)} cy={pegY(row)} r={Math.max(2, gap / 9)} className={styles.peg} />
+              <circle
+                key={`${row}-${j}`}
+                cx={pegX(row, j)}
+                cy={pegY(row)}
+                r={Math.max(2, gap / 9)}
+                className={`${styles.peg} ${hits.has(`${row}-${j}`) ? styles.pegHit : ""}`}
+              />
             )),
           )}
+          {trail.length > 1 && <polyline points={trail.join(" ")} className={styles.trail} />}
           {ball && (
             <circle
               cx={ball.x}
@@ -268,6 +289,7 @@ export default function PlinkoPage() {
   return (
     <GameFrame
       title="بلينكو"
+      tint="#2fb5a8"
       onReset={demo.reset}
       resetDisabled={locked}
       stage={stage}

@@ -50,17 +50,14 @@
     ],
     "line_rule": "left to right from reel 1, three or more of the same symbol (or wild) in a row; one win per line",
     "free_spins": {
-      "scatters_to_spins": {
-        "3": 10,
-        "4": 15,
-        "5": 20
-      },
-      "win_multiplier": 3,
+      "scatters_to_spins": {"3": 10, "4": 15, "5": 20},
+      "start_multiplier": 1,
+      "multiplier_step_after_win": 1,
       "retrigger": false,
       "same_strips": true
     },
     "buy_feature": {
-      "price_multiplier": 24,
+      "price_multiplier": 27,
       "spins": 10
     }
   },
@@ -74,19 +71,20 @@
       "bolt": [10, 30, 100],
       "ring": [5, 15, 30],
       "tri": [5, 15, 30],
-      "square": [4, 10, 30],
-      "diamond": [4, 10, 30]
+      "square": [3, 8, 25],
+      "diamond": [3, 8, 25]
     },
     "pays_note": "line bets for 3, 4 and 5 of a kind",
-    "declared_rtp": "0.955899 (exact 149359240023/156250000000, see slots.test.ts and scripts/slots_par.py)",
-    "declared_buy_rtp": "0.945424",
+    "declared_rtp": "0.958308 (exact 93584773924094013/97656250000000000, see slots.test.ts and scripts/slots_par.py)",
+    "declared_buy_rtp": "0.944157 (exact 8298253238143/8789062500000)",
     "par": {
+      "base_hits": 174107500,
+      "base_spins": 312500000,
       "base_hit_frequency": 0.557144,
       "base_max_line_bet_units": 2060,
-      "volatility_sd_per_round": 3.16,
       "free_spins_one_in": 116.8
     },
-    "max_gross_payout": 628300000
+    "max_gross_payout": 2173300000
   },
   "fairness": {
     "rng_algorithm_version": "1.0",

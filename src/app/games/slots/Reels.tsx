@@ -12,12 +12,13 @@ const rnd = () => ALL[Math.floor(Math.random() * ALL.length)];
 /**
  * Five reels in a 5×5 window. When `spinKey` changes, each reel scrolls from the previous symbols
  * through a blurred filler strip down to the new ones, stopping left to right. `onStopped` fires
- * once the last reel lands.
+ * once every reel has landed.
  */
 export function Reels({
   window: grid,
   previous,
   spinKey,
+  quickStop,
   turbo,
   onStopped,
   wins,
@@ -27,6 +28,7 @@ export function Reels({
   window: SlotSymbol[][]; // [row][reel]
   previous: SlotSymbol[][];
   spinKey: number;
+  quickStop: number; // bump to land the turning reels at once
   turbo: boolean;
   onStopped: () => void;
   wins: { line: number; count: number }[];
@@ -39,33 +41,72 @@ export function Reels({
   // Deterministic first render (the page is pre-rendered); random fillers from the first spin on.
   const fillers = useRef<SlotSymbol[][]>(Array.from({ length: 5 }, (_, r) => Array.from({ length: FILLER }, (_, i) => ALL[(r * 3 + i) % ALL.length])));
 
+  const landed = useRef<boolean[]>([true, true, true, true, true]);
+  const timers = useRef<number[]>([]);
+  const gridRef = useRef(grid);
+  gridRef.current = grid;
+
+  function land(reel: number) {
+    const el = inner.current[reel];
+    if (!el || landed.current[reel]) return;
+    landed.current[reel] = true;
+    el.classList.remove(styles.blur);
+    el.parentElement?.classList.remove(styles.anticipate);
+    const g = gridRef.current;
+    const scatter = Array.from({ length: 5 }, (_, row) => g[row][reel]).includes("scatter");
+    playSound(scatter ? "pop" : "tick");
+    if (landed.current.every(Boolean)) done.current();
+  }
+
+  // Spin: every reel scrolls down to its result. Once two bonus symbols have landed, the reels after
+  // them spin longer and glow (anticipation).
   useEffect(() => {
     if (spinKey === 0) return;
     fillers.current = Array.from({ length: 5 }, () => Array.from({ length: FILLER }, rnd));
     const total = FILLER + 10;
-    const timers: number[] = [];
+    landed.current = [false, false, false, false, false];
+    timers.current.forEach((t) => window.clearTimeout(t));
+    timers.current = [];
+    let scattersBefore = 0;
+    let extra = 0;
     inner.current.forEach((el, reel) => {
       if (!el) return;
-      const dur = (turbo ? 260 : 620) + reel * (turbo ? 70 : 170);
+      if (scattersBefore >= 2) {
+        extra += turbo ? 450 : 950;
+        el.parentElement?.classList.add(styles.anticipate);
+      }
+      const dur = (turbo ? 260 : 620) + reel * (turbo ? 70 : 170) + extra;
       el.style.transition = "none";
       el.style.transform = `translateY(-${((FILLER + 5) / total) * 100}%)`;
       el.classList.add(styles.blur);
       void el.offsetHeight; // apply the start position before animating
       el.style.transition = `transform ${dur}ms cubic-bezier(0.32, 0.02, 0.25, 1.06)`;
       el.style.transform = "translateY(0)";
-      timers.push(
-        window.setTimeout(() => {
-          el.classList.remove(styles.blur);
-          const scatter = Array.from({ length: 5 }, (_, row) => grid[row][reel]).includes("scatter");
-          playSound(scatter ? "pop" : "tick");
-          if (reel === 4) done.current();
-        }, dur),
-      );
+      timers.current.push(window.setTimeout(() => land(reel), dur));
+      if (Array.from({ length: 5 }, (_, row) => grid[row][reel]).includes("scatter")) scattersBefore++;
     });
-    return () => timers.forEach((t) => window.clearTimeout(t));
+    const t = timers.current;
+    return () => t.forEach((x) => window.clearTimeout(x));
     // grid is read when the reel lands; it changes together with spinKey
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spinKey]);
+
+  // Quick stop: the reels still turning snap to their results.
+  useEffect(() => {
+    if (quickStop === 0) return;
+    timers.current.forEach((t) => window.clearTimeout(t));
+    timers.current = [];
+    inner.current.forEach((el, reel) => {
+      if (!el || landed.current[reel]) return;
+      const now = getComputedStyle(el).transform;
+      el.style.transition = "none";
+      el.style.transform = now === "none" ? "translateY(0)" : now;
+      void el.offsetHeight;
+      el.style.transition = "transform 140ms ease-out";
+      el.style.transform = "translateY(0)";
+      timers.current.push(window.setTimeout(() => land(reel), 150));
+    });
+  }, [quickStop]);
 
   const winCells = new Set<string>();
   for (const w of wins) {

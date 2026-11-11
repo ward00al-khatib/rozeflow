@@ -1,45 +1,11 @@
-.page {
-  display: grid;
-  gap: 18px;
-  width: min(100%, 640px);
-  margin: 0 auto;
-}
-
-.titleRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.title {
-  margin: 0;
-  font-size: 30px;
-}
-
-.h2 {
-  font-size: 17px;
-  margin: 0 0 10px;
-}
-
-.demoBadge {
-  font-size: 12.5px;
-  color: var(--signal-ink);
-  border: 1px solid var(--signal-ink);
-  border-radius: 999px;
-  padding: 2px 10px;
-}
-
-.board,
-.controls {
-  background: var(--sheet);
-  border: 1px solid var(--hair);
-  border-radius: var(--radius);
-  padding: 16px 12px;
-}
-
 .board {
-  background-image: radial-gradient(var(--dot) 1px, transparent 1px);
-  background-size: 22px 22px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: min(100%, 620px);
+  margin: 0 auto;
+  padding: 46px 12px 4px;
 }
 
 .svg {
@@ -55,13 +21,14 @@
 /* The one cyan element on this screen. */
 .ball {
   fill: var(--signal-2);
-  transition: cx 90ms linear, cy 90ms linear;
+  transition-property: cx, cy;
+  transition-timing-function: linear;
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--signal-2) 60%, transparent));
 }
 
 .slots {
   display: grid;
-  gap: 1px;
+  gap: 2px;
   margin: 2px auto 0;
 }
 
@@ -69,8 +36,8 @@
   text-align: center;
   font-size: clamp(8px, 2.3vw, 12px);
   letter-spacing: -0.03em;
-  padding: 5px 0;
-  border-radius: 5px;
+  padding: 6px 0;
+  border-radius: 6px;
   overflow: hidden;
   transition: transform 0.2s ease;
 }
@@ -93,100 +60,18 @@
 
 .landed {
   outline: 2px solid var(--signal-2);
-  transform: translateY(3px);
+  transform: translateY(4px);
+  animation: bounce 0.35s ease;
 }
 
-.resultLine {
-  text-align: center;
-  margin: 14px 0 0;
-  min-height: 1.6em;
+@keyframes bounce {
+  50% {
+    transform: translateY(8px);
+  }
 }
 
-.win {
-  color: var(--win);
-  font-weight: 600;
-}
-
-.loss {
-  color: var(--loss);
-  font-weight: 600;
-}
-
-.selectRow {
-  display: grid;
-  grid-template-columns: 1fr 1.4fr;
-  gap: 12px;
-}
-
-.toggle {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: 6px;
-}
-
-.toggle button {
-  background: var(--smoke);
-  color: var(--ink-2);
-  border: 1px solid var(--hair);
-  border-radius: 10px;
-  padding: 9px 4px;
-  font: inherit;
-  font-size: 14.5px;
-  cursor: pointer;
-}
-
-.toggle button[aria-checked="true"] {
-  color: var(--ink);
-  border-color: var(--signal);
-}
-
-.dropButton {
-  width: 100%;
-  font-size: 18px;
-  padding: 14px;
-}
-
-.balance {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-top: 14px;
-  color: var(--ink-2);
-  font-size: 14px;
-}
-
-.balance :global(.num) {
-  color: var(--ink);
-  font-size: 18px;
-}
-
-.linkButton {
-  background: none;
-  border: 0;
-  color: var(--ink-3);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.recent {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.recent span {
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 13px;
-}
-
-@media (max-width: 480px) {
-  .selectRow {
-    grid-template-columns: 1fr;
-    gap: 0;
+@media (max-width: 760px) {
+  .board {
+    padding: 42px 6px 0;
   }
 }

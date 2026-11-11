@@ -5,8 +5,9 @@
  * Each reel stops at unbiased_integer(len(strip)); that index is the top visible symbol and the
  * next four (wrapping) fill the rows below. A line pays left to right from reel 1 for three or more
  * of the same symbol; WILD (reels 2–4 only) stands in for any symbol except the scatter.
- * Three or more scatters anywhere start free spins (10/15/20) on the same strips with every win ×3;
- * free spins do not retrigger. The feature can also be bought for a fixed price (24 × stake).
+ * Three or more bonus scatters anywhere start free spins (10/15/20) on the same strips. Free spins
+ * carry a win multiplier that starts at ×1 and grows by 1 after every winning free spin; they do not
+ * retrigger. The feature can also be bought for a fixed price (27 × stake).
  *
  * Amounts are integers: the stake is a multiple of 20, so a line bet is a whole number of centi-points.
  */
@@ -26,7 +27,8 @@ export const REELS = R.reels;
 export const PAYS = slotsConfig.payout_model.pays as Record<PaySymbol, [number, number, number]>;
 export const PAY_SYMBOLS = [...R.symbols.high, ...R.symbols.low] as PaySymbol[];
 export const FS_AWARDS = R.free_spins.scatters_to_spins as Record<string, number>;
-export const FS_MULTIPLIER = R.free_spins.win_multiplier;
+export const FS_START_MULTIPLIER = R.free_spins.start_multiplier;
+export const FS_MULTIPLIER_STEP = R.free_spins.multiplier_step_after_win;
 export const BUY_PRICE_MULTIPLIER = R.buy_feature.price_multiplier;
 export const BUY_SPINS = R.buy_feature.spins;
 
@@ -43,6 +45,7 @@ export interface SpinResult {
   lineWins: LineWin[];
   units: number;
   scatters: number;
+  multiplier: number; // win multiplier applied to this spin (1 in the base game)
 }
 
 export interface SlotsBet {
@@ -53,7 +56,6 @@ export interface SlotsBet {
 export interface SlotsOutcome {
   base: SpinResult | null; // null when the feature was bought
   freeSpins: SpinResult[];
-  multiplier: number; // free-spin win multiplier
   baseGross: number;
   freeGross: number;
   gross: number;
@@ -82,7 +84,7 @@ export function evaluate(stops: number[]): SpinResult {
     if (w) lineWins.push({ line, ...w });
   });
   const scatters = window.flat().filter((s) => s === "scatter").length;
-  return { stops, window, lineWins, units: lineWins.reduce((s, w) => s + w.units, 0), scatters };
+  return { stops, window, lineWins, units: lineWins.reduce((s, w) => s + w.units, 0), scatters, multiplier: 1 };
 }
 
 export function freeSpinsFor(scatters: number): number {
@@ -111,12 +113,17 @@ export function resolveSlots(stream: RandomStream, bet: SlotsBet): SlotsOutcome 
   const base = bet.buy ? null : spin(stream);
   const count = bet.buy ? BUY_SPINS : freeSpinsFor(base!.scatters);
   const freeSpins: SpinResult[] = [];
-  for (let i = 0; i < count; i++) freeSpins.push(spin(stream));
+  let multiplier = FS_START_MULTIPLIER;
+  for (let i = 0; i < count; i++) {
+    const f = { ...spin(stream), multiplier };
+    freeSpins.push(f);
+    if (f.units > 0) multiplier += FS_MULTIPLIER_STEP;
+  }
   const baseGross = base ? lineBet * base.units : 0;
-  const freeGross = lineBet * FS_MULTIPLIER * freeSpins.reduce((s, f) => s + f.units, 0);
+  const freeGross = lineBet * freeSpins.reduce((s, f) => s + f.units * f.multiplier, 0);
   const gross = baseGross + freeGross;
   if (gross > slotsConfig.payout_model.max_gross_payout) throw new Error("gross payout above the configured maximum");
-  return { base, freeSpins, multiplier: FS_MULTIPLIER, baseGross, freeGross, gross, cost: costOf(bet) };
+  return { base, freeSpins, baseGross, freeGross, gross, cost: costOf(bet) };
 }
 
 export function playSlots(seeds: { serverSeedHex: string; clientSeed: string; nonce: number }, bet: SlotsBet): SlotsOutcome {
@@ -140,6 +147,10 @@ const sub = (a: Q, b: Q) => q(a.n * b.d - b.n * a.d, a.d * b.d);
  * Exact RTP as fractions. A line's five symbols are five independent uniform draws (one per strip),
  * so its expected pay depends only on each strip's symbol counts; all 20 lines have the same
  * expectation. Each strip has one scatter, so at most one scatter shows per reel, with chance 5/len.
+ *
+ * Free spins: spin i (from 0) pays units × m_i, where m_i = start + step × (wins among spins 0..i−1).
+ * Spins are independent, so E[units × m_i] = E[units] × E[m_i] and E[m_i] = start + step × i × h,
+ * with h the exact hit frequency of one spin (counted by scripts/slots_par.py over all 50^5 spins).
  */
 export function exactRtp() {
   const P = STRIPS.map((strip) => {
@@ -175,21 +186,26 @@ export function exactRtp() {
     });
     dist = next;
   }
+  const par = slotsConfig.payout_model.par;
+  const h = q(BigInt(par.base_hits), BigInt(par.base_spins));
+  // Σ over n spins of E[m_i] = n × start + step × h × n(n−1)/2
+  const multiplierSum = (n: number) => add(q(BigInt(n * FS_START_MULTIPLIER)), mul(h, q(BigInt((FS_MULTIPLIER_STEP * n * (n - 1)) / 2))));
   let trigger = q(0n);
-  let expectedSpins = q(0n);
+  let weighted = q(0n);
   dist.forEach((x, k) => {
     const n = freeSpinsFor(k);
     if (n > 0) {
       trigger = add(trigger, x);
-      expectedSpins = add(expectedSpins, mul(x, q(BigInt(n))));
+      weighted = add(weighted, mul(x, multiplierSum(n)));
     }
   });
-  const free = mul(mul(expectedSpins, q(BigInt(FS_MULTIPLIER))), base);
+  const free = mul(weighted, base);
   const rtp = add(base, free);
-  const buy = q(base.n * BigInt(BUY_SPINS * FS_MULTIPLIER), base.d * BigInt(BUY_PRICE_MULTIPLIER));
+  const buy = mul(mul(base, multiplierSum(BUY_SPINS)), q(1n, BigInt(BUY_PRICE_MULTIPLIER)));
   const f = (x: Q) => Number(x.n) / Number(x.d);
   return {
     rtp,
+    buy,
     rtpValue: f(rtp),
     baseValue: f(base),
     freeValue: f(free),

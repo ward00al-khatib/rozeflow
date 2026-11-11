@@ -1,51 +1,35 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { formatPoints } from "@/lib/points";
+import { useState, type ReactNode } from "react";
 import { useSound } from "@/lib/sound";
+import type { WinTier } from "@/lib/winTier";
 import styles from "./GameFrame.module.css";
 
 /**
- * Full-screen game layout shared by all six games: top bar (back, name, balance, sound, rules),
- * a stage for the game itself, and the bet panel (beside the stage on wide screens, under it on phones).
+ * Full-screen game layout shared by all six games: top bar (back, name, sound, rules), the stage
+ * for the game itself, and the control bar under it (components/game/ControlBar).
  */
 export function GameFrame({
   title,
-  balance,
   onReset,
   resetDisabled,
   rules,
   stage,
   panel,
   below,
-  panelPosition = "side",
   rulesTitle,
 }: {
   title: string;
-  balance: number;
   onReset: () => void;
   resetDisabled?: boolean;
   rules: ReactNode;
   stage: ReactNode;
   panel: ReactNode;
   below?: ReactNode;
-  /** "bottom" puts the panel under the stage as a full-width control bar (slots). */
-  panelPosition?: "side" | "bottom";
   rulesTitle?: string;
 }) {
   const sound = useSound();
   const [showRules, setShowRules] = useState(false);
-  const [bump, setBump] = useState<"up" | "down" | null>(null);
-  const prev = useRef(balance);
-
-  useEffect(() => {
-    if (balance === prev.current) return;
-    setBump(balance > prev.current ? "up" : "down");
-    prev.current = balance;
-    const t = window.setTimeout(() => setBump(null), 600);
-    return () => window.clearTimeout(t);
-  }, [balance]);
-
   return (
     <div className={styles.frame}>
       <header className={styles.bar}>
@@ -61,10 +45,6 @@ export function GameFrame({
           <h1>{title}</h1>
         </div>
         <div className={styles.tools}>
-          <div className={`${styles.wallet} ${bump ? styles[bump] : ""}`} title="الرصيد التجريبي">
-            <span className={styles.walletLabel}>تجريبي</span>
-            <span className="num">{formatPoints(balance)}</span>
-          </div>
           <button type="button" className={styles.icon} onClick={sound.toggle} aria-pressed={sound.on} aria-label={sound.on ? "كتم الصوت" : "تشغيل الصوت"}>
             {sound.on ? (
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -88,7 +68,7 @@ export function GameFrame({
         </div>
       </header>
 
-      <div className={`${styles.body} ${panelPosition === "bottom" ? styles.bodyBottom : ""}`}>
+      <div className={styles.body}>
         <section className={styles.stage}>{stage}</section>
         <aside className={styles.panel}>{panel}</aside>
       </div>
@@ -123,11 +103,11 @@ export function GameFrame({
 }
 
 /** Recent results as a strip of chips at the top of the stage, newest first. */
-export function ResultStrip({ items }: { items: { key: string; label: string; tone: "win" | "loss" | "big" }[] }) {
+export function ResultStrip({ items }: { items: { key: string; label: string; tone: WinTier | "loss" }[] }) {
   return (
     <div className={styles.strip} dir="ltr" aria-label="آخر النتائج">
       {items.map((it, i) => (
-        <span key={it.key} className={`num ${styles.chip} ${styles[it.tone]} ${i === 0 ? styles.fresh : ""}`}>
+        <span key={it.key} className={`num ${styles.chip} ${styles["t_" + it.tone]} ${i === 0 ? styles.fresh : ""}`}>
           {it.label}
         </span>
       ))}

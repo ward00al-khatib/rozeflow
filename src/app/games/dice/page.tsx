@@ -1,15 +1,8 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DemoFairness } from "@/components/DemoFairness";
-import {
-  AutoFields,
-  ModeTabs,
-  PlayButton,
-  StakeInput,
-  useAutoPlay,
-  useSpaceKey,
-  type AutoSettings,
-} from "@/components/game/BetControls";
+import { useAutoPlay, useSpaceKey } from "@/components/game/BetControls";
+import { BarStatus, ControlBar } from "@/components/game/ControlBar";
 import { GameFrame, ResultStrip } from "@/components/game/GameFrame";
 import { WinBanner } from "@/components/game/WinBanner";
 import { useDemoSession, type DemoRound } from "@/lib/demo/session";
@@ -27,6 +20,7 @@ import {
 } from "@/lib/games/dice";
 import { formatPoints } from "@/lib/points";
 import { playSound } from "@/lib/sound";
+import { resultTone } from "@/lib/winTier";
 import styles from "./dice.module.css";
 
 const fmtRoll = (r: number) => (r / 100).toFixed(2);
@@ -42,13 +36,7 @@ export default function DicePage() {
   const demo = useDemoSession();
   const [direction, setDirection] = useState<DiceDirection>("under");
   const [target, setTarget] = useState(5000);
-  const [stakeText, setStakeText] = useState("10");
-  const [mode, setMode] = useState<"manual" | "auto">("manual");
-  const [auto, setAuto] = useState<AutoSettings>({
-    rounds: 10,
-    stopProfit: "",
-    stopLoss: "",
-  });
+  const [stake, setStake] = useState(1000);
   const [turbo, setTurbo] = useState(false);
   const [last, setLast] = useState<Round | null>(null);
   const [shown, setShown] = useState<number | null>(null); // the number on screen while rolling
@@ -60,7 +48,6 @@ export default function DicePage() {
 
   const { min, max } = DICE_CONFIG.stake_limits;
   const bounds = DICE_CONFIG.rules.win_count_bounds;
-  const stake = Math.round(Number(stakeText) * 100);
   const wc = winCount(target, direction);
   const multiplier = multiplierFor(
     Math.min(Math.max(wc, bounds.min), bounds.max),
@@ -130,7 +117,7 @@ export default function DicePage() {
 
   const autoplay = useAutoPlay(rollOnce, rolling, turbo ? 120 : 380);
   const locked = rolling || autoplay.running;
-  useSpaceKey(() => !locked && demo.ready && rollOnce(), mode === "manual");
+  useSpaceKey(() => !locked && demo.ready && rollOnce(), true);
 
   const rounds = useMemo(
     () => demo.rounds.filter((r): r is Round => r.game === "dice"),
@@ -149,21 +136,13 @@ export default function DicePage() {
           .map((r) => ({
             key: `${r.serverSeedHash}:${r.nonce}`,
             label: fmtRoll(r.outcome.roll),
-            tone: r.outcome.win
-              ? r.outcome.multiplier >= 10 * MULTIPLIER_SCALE
-                ? "big"
-                : "win"
-              : "loss",
+            tone: resultTone(r.gross, r.stake),
           }))}
       />
       <WinBanner
-        id={
-          !rolling && last && last.outcome.win
-            ? `${last.serverSeedHash}:${last.nonce}`
-            : null
-        }
-        net={last ? last.gross - last.stake : 0}
-        multiplier={(last?.outcome.multiplier ?? 0) / MULTIPLIER_SCALE}
+        id={!rolling && last ? `${last.serverSeedHash}:${last.nonce}` : null}
+        gross={last?.gross ?? 0}
+        stake={last?.stake ?? 1}
       />
 
       <div className={styles.center}>
@@ -316,81 +295,48 @@ export default function DicePage() {
   );
 
   const panel = (
-    <>
-      <ModeTabs mode={mode} onChange={setMode} disabled={autoplay.running} />
-      <StakeInput
-        value={stakeText}
-        onChange={setStakeText}
-        min={min}
-        max={max}
-        balance={demo.balance}
-        disabled={autoplay.running}
-      />
-      <div className={styles.payout}>
-        <span>العائد عند الفوز</span>
-        <span className="num">{formatPoints(potential)}</span>
-      </div>
-      {mode === "auto" && (
-        <AutoFields
-          value={auto}
-          onChange={setAuto}
-          disabled={autoplay.running}
-        />
-      )}
-      <label className={styles.turbo}>
-        <input
-          type="checkbox"
-          checked={turbo}
-          onChange={(e) => setTurbo(e.target.checked)}
-        />
-        رمي سريع
-      </label>
-      <div className={styles.playSlot}>
-        {mode === "manual" ? (
-          <PlayButton
-            onClick={() => rollOnce()}
-            disabled={!demo.ready || rolling}
-          >
-            ارمِ النرد
-          </PlayButton>
-        ) : autoplay.running ? (
-          <PlayButton variant="stop" onClick={autoplay.stop}>
-            إيقاف{" "}
-            {autoplay.left > 0 && (
-              <span className="num">({autoplay.left})</span>
-            )}
-          </PlayButton>
+    <ControlBar
+      balance={demo.balance}
+      status={
+        error ? (
+          <span className="error">{error}</span>
         ) : (
-          <PlayButton
-            onClick={() => autoplay.start(auto)}
-            disabled={!demo.ready || rolling}
-          >
-            ابدأ اللعب التلقائي
-          </PlayButton>
-        )}
-      </div>
-      {autoplay.running || (mode === "auto" && autoplay.net !== 0) ? (
-        <p className={styles.autoNet}>
-          صافي الجولات التلقائية{" "}
-          <span
-            className={`num ${autoplay.net >= 0 ? styles.win : styles.loss}`}
-          >
-            {autoplay.net >= 0 ? "+" : "-"}
-            {formatPoints(Math.abs(autoplay.net))}
-          </span>
-        </p>
-      ) : null}
-      {error && <p className="error">{error}</p>}
-      {mode === "manual" && (
-        <p className={styles.keyHint}>اختصار: زر المسافة يرمي النرد</p>
-      )}
-    </>
+          <BarStatus
+            win={!rolling && last?.outcome.win ? last.gross : null}
+            hint={
+              <>
+                العائد عند الفوز <span className="num">{formatPoints(potential)}</span>
+              </>
+            }
+          />
+        )
+      }
+      stake={stake}
+      onStake={setStake}
+      min={min}
+      max={max}
+      locked={autoplay.running}
+      turbo={turbo}
+      onTurbo={() => setTurbo((t) => !t)}
+      auto={{
+        running: autoplay.running,
+        left: autoplay.left,
+        net: autoplay.net,
+        onStart: autoplay.start,
+        onStop: autoplay.stop,
+        disabled: !demo.ready || rolling,
+      }}
+      primary={
+        autoplay.running
+          ? { kind: "stop", label: "إيقاف", onClick: autoplay.stop }
+          : { kind: "play", label: "ارمِ النرد", onClick: () => rollOnce(), disabled: !demo.ready || rolling, busy: rolling }
+      }
+    />
   );
 
   return (
     <GameFrame
       title="النرد"
-      balance={demo.balance}
       onReset={demo.reset}
       resetDisabled={locked}
       stage={stage}

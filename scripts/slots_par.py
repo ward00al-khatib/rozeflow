@@ -55,6 +55,6 @@ N = L**5
 lines = len(rules["lines"])
 print(f"enumerated {N:,} spins in {time.time() - t:.0f}s")
 print("base RTP (exact):", Fraction(tot, N * lines), float(Fraction(tot, N * lines)))
-print("base hit frequency:", hits / N)
+print("base hit frequency:", hits / N, f"({hits} of {N})")
 print("base SD per spin (stakes):", ((tot2 / N) / lines**2 - (tot / N / lines) ** 2) ** 0.5)
 print("largest pay of one spin (line bets):", mx)

@@ -12,7 +12,7 @@ export const SYMBOL_NAMES: Record<SlotSymbol, string> = {
   square: "المربع",
   diamond: "المعيّن",
   wild: "WILD",
-  scatter: "FLOW",
+  scatter: "البونص",
 };
 
 /** Shared gradients, rendered once per page. */
@@ -199,8 +199,9 @@ function art(s: SlotSymbol) {
             <path d="M22 44c10-14 24-14 34-4s22 10 26-2" />
             <path d="M18 58c12-12 26-10 36 0s22 10 28 0" opacity="0.6" />
           </g>
-          <text x="50" y="80" textAnchor="middle" fontSize="17" fontWeight="900" fontFamily="var(--font-mono), monospace" fill="#06080f">
-            FLOW
+          <rect x="17" y="64" width="66" height="22" rx="7" fill="#06080f" opacity="0.85" />
+          <text x="50" y="80.5" textAnchor="middle" fontSize="15" fontWeight="900" fontFamily="var(--font-mono), monospace" fill="#ffae5c">
+            BONUS
           </text>
         </>
       );

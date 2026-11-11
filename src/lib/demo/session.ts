@@ -10,6 +10,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { commitServerSeed, newServerSeed } from "../fairness/rng";
 
+/** Names of the games that keep a round open between clicks, for the "finish it first" message. */
+const OPEN_GAME_NAME: Record<string, string> = { mines: "الألغام", crash: "كراش" };
+
 export const DEMO_START_BALANCE = 100000; // 1,000 points, same as the signup grant
 
 export interface RevealedSeed {
@@ -142,7 +145,10 @@ export function useDemoSession() {
   /** Starts a multi-step round: takes the stake and uses up a nonce (spec 4.2, one open round). */
   function begin<B, S>(game: string, bet: B, stake: number, initial: S): OpenRound<B, S> {
     if (!state) throw new Error("الجلسة لم تُحمّل بعد.");
-    if (state.open) throw new Error("لديك جولة مفتوحة. أكملها أولاً.");
+    if (state.open) {
+      const where = OPEN_GAME_NAME[state.open.game];
+      throw new Error(where ? `لديك جولة مفتوحة في ${where}. أكملها أولاً.` : "لديك جولة مفتوحة. أكملها أولاً.");
+    }
     if (stake > state.balance) throw new Error("الرصيد التجريبي لا يكفي لهذه القيمة.");
     const open: OpenRound<B, S> = {
       game,
@@ -162,6 +168,12 @@ export function useDemoSession() {
   function openSeeds() {
     if (!state?.open) throw new Error("لا توجد جولة مفتوحة.");
     return { serverSeedHex: state.serverSeed, clientSeed: state.open.clientSeed, nonce: state.open.nonce };
+  }
+
+  /** Seed material the next round will use (demo only, for autoplay bookkeeping). */
+  function nextSeeds() {
+    if (!state) throw new Error("الجلسة لم تُحمّل بعد.");
+    return { serverSeedHex: state.serverSeed, clientSeed: state.clientSeed, nonce: state.nonce };
   }
 
   function updateOpen<S>(next: S) {
@@ -212,6 +224,7 @@ export function useDemoSession() {
     play,
     begin,
     openSeeds,
+    nextSeeds,
     updateOpen,
     finish,
     rotateSeeds,

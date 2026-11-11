@@ -1,0 +1,144 @@
+{
+  "serverSeed": "9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f",
+  "commit": "ec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5",
+  "cases": [
+    {
+      "game": "dice",
+      "clientSeed": "alpha",
+      "nonce": 0,
+      "kind": "integer",
+      "upper": 10000,
+      "expected": 3347
+    },
+    {
+      "game": "dice",
+      "clientSeed": "alpha",
+      "nonce": 1,
+      "kind": "integer",
+      "upper": 10000,
+      "expected": 8649
+    },
+    {
+      "game": "dice",
+      "clientSeed": "beta",
+      "nonce": 0,
+      "kind": "integer",
+      "upper": 10000,
+      "expected": 8700
+    },
+    {
+      "game": "roulette",
+      "clientSeed": "alpha",
+      "nonce": 0,
+      "kind": "integer",
+      "upper": 37,
+      "expected": 12
+    },
+    {
+      "game": "roulette",
+      "clientSeed": "alpha",
+      "nonce": 99,
+      "kind": "integer",
+      "upper": 37,
+      "expected": 19
+    },
+    {
+      "game": "plinko",
+      "clientSeed": "alpha",
+      "nonce": 0,
+      "kind": "integer",
+      "upper": 2,
+      "expected": 1
+    },
+    {
+      "game": "slots",
+      "clientSeed": "alpha",
+      "nonce": 0,
+      "kind": "integer",
+      "upper": 257,
+      "expected": 118
+    },
+    {
+      "game": "crash",
+      "clientSeed": "alpha",
+      "nonce": 0,
+      "kind": "float",
+      "expected": 0.9029065488088899
+    },
+    {
+      "game": "crash",
+      "clientSeed": "alpha",
+      "nonce": 1,
+      "kind": "float",
+      "expected": 0.048139886944174926
+    },
+    {
+      "game": "mines",
+      "clientSeed": "alpha",
+      "nonce": 0,
+      "kind": "shuffle",
+      "size": 25,
+      "expected": [
+        14,
+        10,
+        20,
+        11,
+        23,
+        3,
+        5,
+        8,
+        4,
+        2,
+        18,
+        17,
+        21,
+        12,
+        13,
+        24,
+        6,
+        9,
+        22,
+        16,
+        15,
+        1,
+        0,
+        19,
+        7
+      ]
+    },
+    {
+      "game": "mines",
+      "clientSeed": "عربي",
+      "nonce": 5,
+      "kind": "shuffle",
+      "size": 25,
+      "expected": [
+        21,
+        20,
+        16,
+        13,
+        19,
+        22,
+        24,
+        11,
+        15,
+        3,
+        14,
+        7,
+        12,
+        0,
+        2,
+        6,
+        1,
+        8,
+        9,
+        10,
+        17,
+        23,
+        4,
+        5,
+        18
+      ]
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+.main {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 48px 16px;
+  text-align: center;
+  background-image: radial-gradient(var(--dot) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.wordmark {
+  margin: 0;
+  font-family: var(--font-heading), sans-serif;
+  font-size: clamp(44px, 12vw, 96px);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.flow {
+  color: var(--signal-2);
+}
+
+.lede {
+  max-width: 34em;
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.games {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: min(100%, 480px);
+}
+
+.games li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--sheet);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius);
+}
+
+.games li :global(.num) {
+  color: var(--signal-2);
+  font-size: 13px;
+}
+
+.note {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 14px;
+}
+
+@media (max-width: 420px) {
+  .games {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -61,6 +61,8 @@ h3 {
 }
 
 .btn-primary {
+  display: inline-block;
+  text-decoration: none;
   background: var(--signal);
   color: var(--paper); /* never white on orange */
   border: 0;
@@ -83,4 +85,78 @@ h3 {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* ---------- forms ---------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.field label {
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.input {
+  width: 100%;
+  background: var(--smoke);
+  color: var(--ink);
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  padding: 11px 12px;
+  font: inherit;
+}
+
+.input:focus {
+  outline: 2px solid var(--signal-2);
+  outline-offset: 1px;
+}
+
+.check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  color: var(--ink-2);
+  font-size: 15px;
+}
+
+.check input {
+  margin-top: 6px;
+  accent-color: var(--signal);
+}
+
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  padding: 11px 20px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.error {
+  color: var(--signal-ink);
+  font-size: 14px;
+  margin: 8px 0 0;
+}
+
+.success {
+  color: var(--win);
+  font-size: 14px;
+  margin: 8px 0 0;
+}
+
+.muted {
+  color: var(--ink-3);
+  font-size: 14px;
 }

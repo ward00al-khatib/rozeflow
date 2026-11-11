@@ -1,11 +1,24 @@
+"use client";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useMember } from "@/lib/useMember";
 import styles from "./page.module.css";
 
 const GAMES = ["النرد", "الروليت", "بلينكو", "الألغام", "كراش", "السلوتس"];
 
 export default function Home() {
+  const member = useMember();
+  const router = useRouter();
+
+  // Invite links from the Supabase dashboard land here; send them on to finish joining.
+  useEffect(() => {
+    if (member.status === "needs_join") router.replace("/join/");
+  }, [member.status, router]);
+
   return (
     <main className={styles.main}>
-      {/* Placeholder: the real ROZEFLOW wordmark is drawn SVG from the ROZE generator (spec 23.2), added in M1. */}
+      {/* Placeholder: the real ROZEFLOW wordmark is drawn SVG from the ROZE generator (spec 23.2). */}
       <h1 className={styles.wordmark} dir="ltr">
         <span>ROZE</span>
         <span className={styles.flow}>FLOW</span>
@@ -21,7 +34,12 @@ export default function Home() {
         ))}
       </ul>
 
-      <p className={styles.note}>قيد الإنشاء. الدخول بالدعوة فقط.</p>
+      {member.status === "member" ? (
+        <Link href="/wallet/" className="btn-primary">محفظتي</Link>
+      ) : member.status === "signed_out" ? (
+        <Link href="/login/" className="btn-primary">الدخول</Link>
+      ) : null}
+      <p className={styles.note}>الألعاب قيد الإنشاء. الدخول بالدعوة فقط.</p>
     </main>
   );
 }

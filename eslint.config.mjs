@@ -18,6 +18,7 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      "supabase/functions/**", // Deno code, checked by the Supabase CLI
     ],
   },
 ];

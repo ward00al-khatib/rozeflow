@@ -726,3 +726,165 @@
     box-shadow: inset 0 0 0 2px #ffd2a1, 0 0 36px color-mix(in srgb, var(--signal) 80%, transparent);
   }
 }
+
+/* ---------- 2.2: living symbols and scene ---------- */
+/* Winning symbols come alive: each one moves in its own way (classes set in symbols.tsx). */
+.hit::after {
+  content: "";
+  position: absolute;
+  inset: 3%;
+  border-radius: 50%;
+  padding: 3px;
+  background: conic-gradient(from 0deg, transparent 0 20%, #ffe08a 35%, transparent 50% 70%, var(--signal) 85%, transparent);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: ringSpin 1.4s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes ringSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sym :global(.sx-spin),
+.sym :global(.sx-wobble),
+.sym :global(.sx-bounce),
+.sym :global(.sx-shine) {
+  transform-origin: 50px 50px;
+}
+
+.hit :global(.sx-spin) {
+  animation: sxSpin 1.6s linear infinite;
+}
+
+.hit :global(.sx-wobble) {
+  animation: sxWobble 1.2s ease-in-out infinite alternate;
+}
+
+.hit :global(.sx-bounce) {
+  animation: sxBounce 0.7s ease-in-out infinite alternate;
+}
+
+.hit :global(.sx-shine) {
+  animation: sxShine 0.9s ease-in-out infinite alternate;
+}
+
+.hit :global(.sx-flash) {
+  animation: sxFlash 0.5s steps(2, jump-none) infinite;
+}
+
+.hit :global(.sx-bubble) {
+  animation: sxBubble 1s ease-in infinite;
+}
+
+.hit :global(.sx-bubble:nth-of-type(2n)) {
+  animation-delay: -0.5s;
+}
+
+/* The bonus symbol always moves a little, so it stands out while the reels turn. */
+.sym :global(.sx-wave) {
+  animation: sxWave 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes sxSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes sxWobble {
+  from {
+    transform: rotate(-16deg);
+  }
+  to {
+    transform: rotate(16deg);
+  }
+}
+
+@keyframes sxBounce {
+  from {
+    transform: scale(0.9) rotate(-6deg);
+  }
+  to {
+    transform: scale(1.08) rotate(6deg);
+  }
+}
+
+@keyframes sxShine {
+  from {
+    filter: brightness(1);
+    transform: scale(0.96);
+  }
+  to {
+    filter: brightness(1.5);
+    transform: scale(1.06);
+  }
+}
+
+@keyframes sxFlash {
+  from {
+    filter: brightness(1);
+  }
+  to {
+    filter: brightness(1.7);
+  }
+}
+
+@keyframes sxBubble {
+  from {
+    transform: translateY(6px);
+    opacity: 0.9;
+  }
+  to {
+    transform: translateY(-22px);
+    opacity: 0;
+  }
+}
+
+@keyframes sxWave {
+  from {
+    transform: translateX(-3px);
+  }
+  to {
+    transform: translateX(3px);
+  }
+}
+
+/* A slow sheen crossing the glass of the machine. */
+.window::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(110deg, transparent 42%, rgb(255 255 255 / 0.07) 50%, transparent 58%);
+  background-size: 300% 100%;
+  animation: sheen 7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes sheen {
+  0%,
+  55% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -60% 0;
+  }
+}
+
+.scene {
+  isolation: isolate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hit::after,
+  .window::after,
+  .sym :global(.sx-wave),
+  .hit :global([class^="sx-"]) {
+    animation: none;
+  }
+}

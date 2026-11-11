@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DemoFairness } from "@/components/DemoFairness";
+import { Ambient } from "@/components/fx/Ambient";
 import { useAutoPlay, useSpaceKey } from "@/components/game/BetControls";
 import { BarStatus, ControlBar } from "@/components/game/ControlBar";
 import { GameFrame, ResultStrip } from "@/components/game/GameFrame";
@@ -200,6 +201,7 @@ export default function SlotsPage() {
 
   const stage = (
     <div className={`${styles.scene} ${inFree ? styles.sceneFree : ""}`}>
+      <Ambient count={22} seed={inFree ? 5 : 3} />
       <SymbolDefs />
       <Decorations />
       <div className={styles.strip}>

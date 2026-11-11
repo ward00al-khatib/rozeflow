@@ -27,7 +27,8 @@ export default function JoinPage() {
     setError(null);
     const sb = supabase();
     const { error: pwError } = await sb.auth.updateUser({ password });
-    if (pwError) {
+    // An account created in the dashboard with a password may re-enter that same password here.
+    if (pwError && pwError.code !== "same_password") {
       setBusy(false);
       return setError("تعذّر حفظ كلمة السر. قد يكون رابط الدعوة منتهياً، فاطلب دعوة جديدة.");
     }

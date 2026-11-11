@@ -1,0 +1,20 @@
+{
+  "game_id": "crash",
+  "config_version": 1,
+  "ruleset_version": "1.0.0",
+  "units": "centi_points",
+  "mode": "single_player",
+  "stake_limits": { "min": 1000, "max": 100000 },
+  "rules": {
+    "auto_cashout": { "min": 101, "max": 100000 },
+    "growth": "multiplier(t) = floor(100 * e^(0.08 * seconds)) / 100",
+    "growth_rate_per_second": 0.08
+  },
+  "payout_model": {
+    "target_rtp_bp": 9900,
+    "crash_point_formula": "min(max_multiplier, max(100, floor(100 * rtp * 2^52 / (2^52 - X)))) hundredths, X = 52-bit unit_float numerator",
+    "max_multiplier": 100000,
+    "max_gross_payout": 100000000
+  },
+  "fairness": { "rng_algorithm_version": "1.0", "game_domain": "rozeflow:v1:crash" }
+}

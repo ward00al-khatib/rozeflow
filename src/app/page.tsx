@@ -7,11 +7,11 @@ import styles from "./page.module.css";
 
 const GAMES: Array<{ name: string; href?: string }> = [
   { name: "النرد", href: "/games/dice/" },
-  { name: "الروليت" },
-  { name: "بلينكو" },
-  { name: "الألغام" },
-  { name: "كراش" },
-  { name: "السلوتس" },
+  { name: "الروليت", href: "/games/roulette/" },
+  { name: "بلينكو", href: "/games/plinko/" },
+  { name: "الألغام", href: "/games/mines/" },
+  { name: "كراش", href: "/games/crash/" },
+  { name: "السلوتس", href: "/games/slots/" },
 ];
 
 export default function Home() {
@@ -69,7 +69,7 @@ export default function Home() {
       ) : member.status === "signed_out" ? (
         <Link href="/login/" className="btn-primary">الدخول</Link>
       ) : null}
-      <p className={styles.note}>النرد متاح الآن بنقاط تجريبية. بقية الألعاب قيد الإنشاء. الدخول بالدعوة فقط.</p>
+      <p className={styles.note}>الألعاب الست متاحة الآن بنقاط تجريبية. الدخول بالدعوة فقط.</p>
     </main>
   );
 }

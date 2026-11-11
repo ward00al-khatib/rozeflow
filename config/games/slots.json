@@ -1,0 +1,26 @@
+{
+  "game_id": "slots",
+  "config_version": 1,
+  "ruleset_version": "1.0.0",
+  "units": "centi_points",
+  "stake_limits": { "min": 1000, "max": 100000, "multiple_of": 5 },
+  "rules": {
+    "reels": 3,
+    "rows": 3,
+    "derivation": "one unbiased_integer(len(strip)) per reel = index of the top visible symbol; rows wrap around",
+    "strips": [
+      ["cherry", "gem", "star", "cherry", "bell", "gem", "cherry", "bar", "star", "gem", "cherry", "seven", "gem", "cherry", "star", "bell", "cherry", "gem", "bar", "cherry", "star", "gem", "bell", "cherry"],
+      ["cherry", "gem", "star", "cherry", "bell", "gem", "cherry", "bar", "star", "gem", "cherry", "seven", "gem", "cherry", "star", "bell", "cherry", "gem", "bar", "cherry", "star", "gem", "bell", "cherry"],
+      ["cherry", "gem", "star", "cherry", "bell", "gem", "cherry", "bar", "star", "gem", "cherry", "seven", "gem", "cherry", "star", "bell", "cherry", "gem", "bar", "cherry", "star", "gem", "bell", "cherry"]
+    ],
+    "lines": [[1, 1, 1], [0, 0, 0], [2, 2, 2], [0, 1, 2], [2, 1, 0]]
+  },
+  "payout_model": {
+    "line_bet": "stake / 5 (all five lines always play)",
+    "three_of_a_kind": { "seven": 400, "bar": 100, "bell": 40, "star": 20, "gem": 11, "cherry": 6 },
+    "two_cherries_left": 4,
+    "declared_rtp": "0.947917 (full enumeration of 24^3 stops, see PAR sheet test)",
+    "max_gross_payout": 8340000
+  },
+  "fairness": { "rng_algorithm_version": "1.0", "game_domain": "rozeflow:v1:slots" }
+}

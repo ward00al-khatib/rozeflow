@@ -98,7 +98,7 @@ function art(s: SlotSymbol) {
       return (
         <>
           <Plate rim="url(#sx-gold)" />
-          <g fill="none" stroke="url(#sx-cyan)" strokeWidth="4" filter="url(#sx-glow)">
+          <g className="sx-spin" fill="none" stroke="url(#sx-cyan)" strokeWidth="4" filter="url(#sx-glow)">
             <ellipse cx="50" cy="50" rx="30" ry="11" />
             <ellipse cx="50" cy="50" rx="30" ry="11" transform="rotate(60 50 50)" />
             <ellipse cx="50" cy="50" rx="30" ry="11" transform="rotate(-60 50 50)" />
@@ -113,7 +113,7 @@ function art(s: SlotSymbol) {
       return (
         <>
           <Plate rim="url(#sx-violet)" />
-          <g filter="url(#sx-glow)">
+          <g className="sx-shine" filter="url(#sx-glow)">
             <path d="M50 16l20 18-20 50-20-50z" fill="url(#sx-violet)" />
             <path d="M50 16l20 18H30z" fill="#efe0ff" opacity="0.75" />
             <path d="M50 34v50M30 34l20 50M70 34L50 84" stroke="#2a0f63" strokeOpacity="0.35" strokeWidth="1.4" />
@@ -128,10 +128,10 @@ function art(s: SlotSymbol) {
           <Plate rim="url(#sx-green)" />
           <path d="M42 20h16v4h-3v16l17 30a6 6 0 0 1-5 9H33a6 6 0 0 1-5-9l17-30V24h-3z" fill="#cfe9ff" fillOpacity="0.16" stroke="#dff3ff" strokeWidth="2.5" />
           <path d="M33.5 60h33l6.5 11a4 4 0 0 1-3.5 6H30.5a4 4 0 0 1-3.5-6z" fill="url(#sx-green)" filter="url(#sx-glow)" />
-          <circle cx="44" cy="68" r="3" fill="#eafff4" opacity="0.8" />
-          <circle cx="55" cy="64" r="2" fill="#eafff4" opacity="0.7" />
-          <circle cx="52" cy="50" r="2.4" fill="#a7ffd6" opacity="0.8" />
-          <circle cx="48" cy="40" r="1.6" fill="#a7ffd6" opacity="0.6" />
+          <circle className="sx-bubble" cx="44" cy="68" r="3" fill="#eafff4" opacity="0.8" />
+          <circle className="sx-bubble" cx="55" cy="64" r="2" fill="#eafff4" opacity="0.7" />
+          <circle className="sx-bubble" cx="52" cy="50" r="2.4" fill="#a7ffd6" opacity="0.8" />
+          <circle className="sx-bubble" cx="48" cy="40" r="1.6" fill="#a7ffd6" opacity="0.6" />
         </>
       );
     case "planet":
@@ -140,7 +140,9 @@ function art(s: SlotSymbol) {
           <Plate rim="url(#sx-orange)" />
           <circle cx="50" cy="50" r="20" fill="url(#sx-orange)" />
           <path d="M33 44c10 3 24 3 34-2M31 54c12 4 26 4 38-1" stroke="#7a2f05" strokeOpacity="0.35" strokeWidth="3" fill="none" />
-          <ellipse cx="50" cy="52" rx="36" ry="9" fill="none" stroke="url(#sx-cyan)" strokeWidth="4" transform="rotate(-14 50 52)" />
+          <g className="sx-wobble">
+            <ellipse cx="50" cy="52" rx="36" ry="9" fill="none" stroke="url(#sx-cyan)" strokeWidth="4" transform="rotate(-14 50 52)" />
+          </g>
           <circle cx="43" cy="42" r="4" fill="#fff" opacity="0.35" />
         </>
       );
@@ -148,34 +150,34 @@ function art(s: SlotSymbol) {
       return (
         <>
           <Plate rim="url(#sx-cyan)" />
-          <path d="M56 14L28 56h18l-6 30 32-44H54z" fill="url(#sx-gold)" stroke="#7a3b05" strokeWidth="2" strokeLinejoin="round" filter="url(#sx-glow)" />
+          <path className="sx-flash" d="M56 14L28 56h18l-6 30 32-44H54z" fill="url(#sx-gold)" stroke="#7a3b05" strokeWidth="2" strokeLinejoin="round" filter="url(#sx-glow)" />
           <path d="M53 22L37 50h9" stroke="#fff" strokeOpacity="0.6" strokeWidth="2.5" fill="none" strokeLinecap="round" />
         </>
       );
     case "ring":
       return (
-        <g filter="url(#sx-glow)">
+        <g className="sx-bounce" filter="url(#sx-glow)">
           <circle cx="50" cy="50" r="25" fill="none" stroke="url(#sx-cyan)" strokeWidth="13" />
           <path d="M31 40a22 22 0 0 1 22-17" stroke="#fff" strokeOpacity="0.55" strokeWidth="4" fill="none" strokeLinecap="round" />
         </g>
       );
     case "tri":
       return (
-        <g filter="url(#sx-glow)">
+        <g className="sx-bounce" filter="url(#sx-glow)">
           <path d="M50 18l32 58H18z" fill="url(#sx-rose)" stroke="#ffe3eb" strokeOpacity="0.5" strokeWidth="2" strokeLinejoin="round" />
           <path d="M50 30l-18 33" stroke="#fff" strokeOpacity="0.45" strokeWidth="4" strokeLinecap="round" />
         </g>
       );
     case "square":
       return (
-        <g filter="url(#sx-glow)">
+        <g className="sx-bounce" filter="url(#sx-glow)">
           <rect x="24" y="24" width="52" height="52" rx="10" fill="url(#sx-green)" stroke="#e0fff0" strokeOpacity="0.5" strokeWidth="2" />
           <path d="M32 40v-6a4 4 0 0 1 4-4h8" stroke="#fff" strokeOpacity="0.55" strokeWidth="4" fill="none" strokeLinecap="round" />
         </g>
       );
     case "diamond":
       return (
-        <g filter="url(#sx-glow)">
+        <g className="sx-bounce" filter="url(#sx-glow)">
           <path d="M50 16l32 34-32 34-32-34z" fill="url(#sx-steel)" stroke="#fff" strokeOpacity="0.5" strokeWidth="2" strokeLinejoin="round" />
           <path d="M50 26L30 48" stroke="#fff" strokeOpacity="0.6" strokeWidth="4" strokeLinecap="round" />
         </g>
@@ -184,7 +186,7 @@ function art(s: SlotSymbol) {
       return (
         <>
           <path d="M50 4l40 23v46L50 96 10 73V27z" fill="#2b1606" stroke="url(#sx-gold)" strokeWidth="5" />
-          <path d="M50 13l32 18.5v37L50 87 18 68.5v-37z" fill="url(#sx-orange)" opacity="0.92" />
+          <path className="sx-flash" d="M50 13l32 18.5v37L50 87 18 68.5v-37z" fill="url(#sx-orange)" opacity="0.92" />
           <text x="50" y="59" textAnchor="middle" fontSize="23" fontWeight="900" fontFamily="var(--font-mono), monospace" fill="#06080f" letterSpacing="-0.5">
             WILD
           </text>
@@ -195,7 +197,7 @@ function art(s: SlotSymbol) {
       return (
         <>
           <circle cx="50" cy="50" r="44" fill="url(#sx-flow)" filter="url(#sx-glow)" />
-          <g fill="none" stroke="#e9fbff" strokeWidth="3" strokeLinecap="round" opacity="0.85">
+          <g className="sx-wave" fill="none" stroke="#e9fbff" strokeWidth="3" strokeLinecap="round" opacity="0.85">
             <path d="M22 44c10-14 24-14 34-4s22 10 26-2" />
             <path d="M18 58c12-12 26-10 36 0s22 10 28 0" opacity="0.6" />
           </g>

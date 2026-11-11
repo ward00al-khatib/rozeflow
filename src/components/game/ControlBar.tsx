@@ -219,7 +219,7 @@ export function ControlBar({
         </div>
         <button
           type="button"
-          className={`${styles.primary} ${styles[primary.kind]} ${primary.busy ? styles.busy : ""}`}
+          className={`${styles.primary} ${styles[primary.kind] ?? ""} ${primary.busy ? styles.busy : ""}`}
           onClick={primary.onClick}
           disabled={primary.disabled}
           aria-label={primary.label}

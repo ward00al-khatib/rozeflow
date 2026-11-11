@@ -1,0 +1,77 @@
+.ambient {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1; /* above the parent's background, under its content; the parent sets isolation: isolate */
+}
+
+.ambient i {
+  position: absolute;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0;
+  filter: blur(0.4px);
+  box-shadow: 0 0 10px 1px currentColor;
+  animation: drift linear infinite;
+}
+
+@keyframes drift {
+  0% {
+    transform: translate(0, 0) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.75;
+  }
+  70% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(1.15);
+    opacity: 0;
+  }
+}
+
+.glow {
+  position: absolute;
+  width: 55%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.22;
+  animation: wander 26s ease-in-out infinite alternate;
+}
+
+.glowA {
+  left: -12%;
+  top: -18%;
+  background: #3ddcff;
+}
+
+.glowB {
+  right: -14%;
+  bottom: -24%;
+  background: #a66bff;
+  animation-duration: 32s;
+  animation-direction: alternate-reverse;
+}
+
+@keyframes wander {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(12%, 10%) scale(1.25);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient i,
+  .glow {
+    animation: none;
+  }
+  .ambient i {
+    opacity: 0.4;
+  }
+}

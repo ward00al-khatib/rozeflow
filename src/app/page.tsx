@@ -2,16 +2,18 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Ambient } from "@/components/fx/Ambient";
+import { GameCover, type GameId } from "@/components/lobby/Covers";
 import { useMember } from "@/lib/useMember";
 import styles from "./page.module.css";
 
-const GAMES: Array<{ name: string; href?: string }> = [
-  { name: "النرد", href: "/games/dice/" },
-  { name: "الروليت", href: "/games/roulette/" },
-  { name: "بلينكو", href: "/games/plinko/" },
-  { name: "الألغام", href: "/games/mines/" },
-  { name: "كراش", href: "/games/crash/" },
-  { name: "السلوتس", href: "/games/slots/" },
+const GAMES: Array<{ id: GameId; name: string; tag: string; fact: [string, string]; wide?: boolean }> = [
+  { id: "slots", name: "السلوتس", tag: "مختبر الليل · لفّات مجانية بمضاعف يكبر", fact: ["عائد", "95.8%"], wide: true },
+  { id: "crash", name: "كراش", tag: "حصّل قبل الانهيار", fact: ["حتى", "1,000×"], wide: true },
+  { id: "dice", name: "النرد", tag: "اختر فرصتك", fact: ["عائد", "99%"] },
+  { id: "roulette", name: "الروليت", tag: "صفر واحد", fact: ["حتى", "36×"] },
+  { id: "plinko", name: "بلينكو", tag: "ثلاث مخاطر", fact: ["عائد", "99%"] },
+  { id: "mines", name: "الألغام", tag: "اكشف وحصّل", fact: ["حتى", "1,000×"] },
 ];
 
 export default function Home() {
@@ -39,37 +41,64 @@ export default function Home() {
 
   return (
     <main className={styles.main}>
-      {/* Placeholder: the real ROZEFLOW wordmark is drawn SVG from the ROZE generator (spec 23.2). */}
-      <h1 className={styles.wordmark} dir="ltr">
-        <span>ROZE</span>
-        <span className={styles.flow}>FLOW</span>
-      </h1>
-      <p className={styles.lede}>موقع خاص بالدعوات. ست ألعاب، ونقاط افتراضية فقط، ونتائج يمكنك التحقق منها بنفسك.</p>
+      <Ambient count={34} seed={11} />
+      <header className={styles.top}>
+        {/* Placeholder: the real ROZEFLOW wordmark is drawn SVG from the ROZE generator (spec 23.2). */}
+        <span className={styles.brand} dir="ltr">
+          ROZE<span>FLOW</span>
+        </span>
+        {member.status === "member" ? (
+          <Link href="/wallet/" className={styles.account}>
+            محفظتي
+          </Link>
+        ) : member.status === "signed_out" ? (
+          <Link href="/login/" className={styles.account}>
+            الدخول
+          </Link>
+        ) : null}
+      </header>
+
+      <section className={styles.hero}>
+        <h1 className={styles.wordmark} dir="ltr">
+          <span>ROZE</span>
+          <span className={styles.flow}>FLOW</span>
+        </h1>
+        <p className={styles.lede}>ست ألعاب بنقاط افتراضية فقط، ونتائج يمكنك التحقق منها بنفسك.</p>
+        {linkError && (
+          <p className="error" role="alert">
+            {linkError}
+          </p>
+        )}
+      </section>
 
       <ul className={styles.games}>
-        {GAMES.map((g, i) => {
-          const body = (
-            <>
-              <span className="num">{String(i + 1).padStart(2, "0")}</span>
-              {g.name}
-              {!g.href && <span className={styles.soon}>قريباً</span>}
-            </>
-          );
-          return (
-            <li key={g.name} className={g.href ? styles.live : undefined}>
-              {g.href ? <Link href={g.href}>{body}</Link> : body}
-            </li>
-          );
-        })}
+        {GAMES.map((g, i) => (
+          <li key={g.id} className={g.wide ? styles.wide : undefined} style={{ animationDelay: `${i * 70}ms` }}>
+            <Link href={`/games/${g.id}/`} className={styles.card}>
+              <span className={styles.art}>
+                <GameCover game={g.id} />
+              </span>
+              <span className={styles.meta}>
+                <span className={styles.text}>
+                  <strong>{g.name}</strong>
+                  <small>{g.tag}</small>
+                </span>
+                <span className={styles.fact}>
+                  {g.fact[0]} <span className="num">{g.fact[1]}</span>
+                </span>
+              </span>
+              <span className={styles.play} aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M8 5.5v13l11-6.5z" fill="currentColor" />
+                </svg>
+                العب
+              </span>
+            </Link>
+          </li>
+        ))}
       </ul>
 
-      {linkError && <p className="error" role="alert">{linkError}</p>}
-      {member.status === "member" ? (
-        <Link href="/wallet/" className="btn-primary">محفظتي</Link>
-      ) : member.status === "signed_out" ? (
-        <Link href="/login/" className="btn-primary">الدخول</Link>
-      ) : null}
-      <p className={styles.note}>الألعاب الست متاحة الآن بنقاط تجريبية. الدخول بالدعوة فقط.</p>
+      <p className={styles.note}>الألعاب متاحة الآن بنقاط تجريبية تبقى في متصفحك. الدخول بالدعوة فقط.</p>
     </main>
   );
 }

@@ -1,14 +1,16 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DemoFairness } from "@/components/DemoFairness";
-import { AutoFields, useAutoPlay, useSpaceKey, type AutoSettings } from "@/components/game/BetControls";
-import { GameFrame } from "@/components/game/GameFrame";
+import { useAutoPlay, useSpaceKey } from "@/components/game/BetControls";
+import { BarStatus, ControlBar } from "@/components/game/ControlBar";
+import { GameFrame, ResultStrip } from "@/components/game/GameFrame";
 import { WinBanner } from "@/components/game/WinBanner";
 import { useDemoSession, type DemoRound } from "@/lib/demo/session";
 import {
   BUY_PRICE_MULTIPLIER,
   BUY_SPINS,
-  FS_MULTIPLIER,
+  FS_MULTIPLIER_STEP,
+  FS_START_MULTIPLIER,
   LINES,
   LINE_COUNT,
   PAYS,
@@ -27,6 +29,7 @@ import {
 } from "@/lib/games/slots";
 import { formatPoints } from "@/lib/points";
 import { playSound } from "@/lib/sound";
+import { resultTone } from "@/lib/winTier";
 import { LINE_COLORS, Reels } from "./Reels";
 import { SYMBOL_NAMES, Symbol, SymbolDefs } from "./symbols";
 import styles from "./slots.module.css";
@@ -34,11 +37,11 @@ import styles from "./slots.module.css";
 type Round = DemoRound<SlotsBet, SlotsOutcome>;
 type Phase = "idle" | "spinning" | "fsIntro" | "fsSpinning" | "fsOutro";
 
-const BET_STEPS = [1000, 2000, 4000, 6000, 10000, 20000, 40000, 60000, 100000]; // centi-points
 const START = windowAt([0, 10, 20, 30, 40]);
 const INTRO_KEY = "rozeflow:slots:intro-seen";
 const PAR = SLOTS_CONFIG.payout_model.par;
-const MAX_WIN = Math.round((PAR.base_max_line_bet_units * (1 + 20 * FS_MULTIPLIER)) / LINE_COUNT);
+// Top round: the best spin, then 20 free spins at multipliers 1..20.
+const MAX_WIN = Math.round((PAR.base_max_line_bet_units * (1 + 210)) / LINE_COUNT);
 
 export default function SlotsPage() {
   const demo = useDemoSession();
@@ -59,9 +62,8 @@ export default function SlotsPage() {
   const [error, setError] = useState<string | null>(null);
   const [intro, setIntro] = useState(false);
   const [buyOpen, setBuyOpen] = useState(false);
-  const [autoOpen, setAutoOpen] = useState(false);
-  const [auto, setAuto] = useState<AutoSettings>({ rounds: 25, stopProfit: "", stopLoss: "" });
   const [banner, setBanner] = useState<string | null>(null);
+  const [quickStop, setQuickStop] = useState(0);
   const timers = useRef<number[]>([]);
 
   useEffect(() => {
@@ -128,9 +130,8 @@ export default function SlotsPage() {
   function finish(r: Round) {
     setPhase("idle");
     setPending(0);
-    if (r.gross >= r.stake * 10) setBanner(`${r.serverSeedHash}:${r.nonce}`);
-    else if (r.gross > 0) playSound("win");
-    else playSound("lose");
+    setBanner(`${r.serverSeedHash}:${r.nonce}`); // the banner picks the win size, if any
+    if (r.gross === 0) playSound("lose");
   }
 
   const landed = useCallback(() => {
@@ -153,8 +154,8 @@ export default function SlotsPage() {
     if (phase === "fsSpinning") {
       const spin = o.freeSpins[fsIndex];
       setCurrent(spin);
-      const win = spin.units * lineBet * FS_MULTIPLIER;
-      if (win > 0) playSound("win");
+      const win = spin.units * lineBet * spin.multiplier;
+      if (win > 0) playSound(spin.units > 0 && fsIndex + 1 < o.freeSpins.length ? "cashout" : "win");
       setFsWin((w) => w + win);
       const next = fsIndex + 1;
       if (next < o.freeSpins.length) later(() => startFree(round, next, spin.window), turbo ? 450 : win > 0 ? 1300 : 650);
@@ -183,34 +184,45 @@ export default function SlotsPage() {
   }, [phase, current]);
 
   const autoplay = useAutoPlay(() => play(false), busy, turbo ? 150 : 500);
-  useSpaceKey(() => !busy && !autoplay.running && demo.ready && play(false), !intro && !buyOpen);
+  useSpaceKey(() => {
+    if (phase === "spinning" || phase === "fsSpinning") setQuickStop((q) => q + 1);
+    else if (!busy && !autoplay.running && demo.ready) play(false);
+  }, !intro && !buyOpen);
 
-  function stepBet(dir: 1 | -1) {
-    const i = BET_STEPS.indexOf(stake);
-    const next = BET_STEPS[Math.min(BET_STEPS.length - 1, Math.max(0, (i < 0 ? 1 : i) + dir))];
-    playSound("click");
-    setStake(next);
-  }
 
   const rounds = useMemo(() => demo.rounds.filter((r): r is Round => r.game === "slots" && "freeSpins" in (r.outcome as object)), [demo.rounds]);
   const inFree = phase === "fsIntro" || phase === "fsSpinning" || phase === "fsOutro";
   const wins = current ? current.lineWins.map((w) => ({ line: w.line, count: w.count })) : [];
   const fsTotal = round?.outcome.freeSpins.length ?? 0;
+  const fsSpin = inFree && fsIndex >= 0 && round ? round.outcome.freeSpins[fsIndex] : null;
+  // Multiplier on screen: the current spin's, and after it lands, the next one's.
+  const fsMult = fsSpin ? (current === fsSpin && fsSpin.units > 0 ? fsSpin.multiplier + FS_MULTIPLIER_STEP : fsSpin.multiplier) : FS_START_MULTIPLIER;
 
   const stage = (
     <div className={`${styles.scene} ${inFree ? styles.sceneFree : ""}`}>
       <SymbolDefs />
       <Decorations />
+      <div className={styles.strip}>
+        <ResultStrip
+          items={rounds.slice(busy ? 1 : 0, (busy ? 1 : 0) + 12).map((r) => ({
+            key: `${r.serverSeedHash}:${r.nonce}`,
+            label: `${(r.gross / r.stake).toFixed(r.gross >= 10 * r.stake ? 0 : 1)}×`,
+            tone: resultTone(r.gross, r.stake),
+          }))}
+        />
+      </div>
       <div className={styles.machineTop}>
         <span className={styles.gameName}>مختبر الليل</span>
         {inFree ? (
           <span className={styles.fsCounter}>
-            لفّة مجانية <span className="num">{Math.max(fsIndex + 1, 0)}/{fsTotal}</span> · الأرباح{" "}
-            <span className="num">×{FS_MULTIPLIER}</span>
+            لفّة مجانية <span className="num">{Math.max(fsIndex + 1, 0)}/{fsTotal}</span>
+            <span key={fsMult} className={`num ${styles.multBadge}`}>
+              ×{fsMult}
+            </span>
           </span>
         ) : (
           <span className={styles.tagline}>
-            <span className="num">{LINE_COUNT}</span> خطاً · WILD · لفّات مجانية <span className="num">×{FS_MULTIPLIER}</span>
+            <span className="num">{LINE_COUNT}</span> خطاً · WILD · بونص لفّات مجانية بمضاعف يكبر
           </span>
         )}
       </div>
@@ -219,6 +231,7 @@ export default function SlotsPage() {
           window={grid}
           previous={prev}
           spinKey={spinKey}
+          quickStop={quickStop}
           turbo={turbo}
           onStopped={landed}
           wins={wins}
@@ -232,7 +245,7 @@ export default function SlotsPage() {
               .slice(0, activeLine === null ? 3 : 1)
               .map((w) => (
                 <span key={w.line} className="num" style={{ borderColor: LINE_COLORS[w.line % LINE_COLORS.length] }}>
-                  {formatPoints(w.units * lineBet * (inFree ? FS_MULTIPLIER : 1))}
+                  {formatPoints(w.units * lineBet * current.multiplier)}
                 </span>
               ))}
           </div>
@@ -242,10 +255,11 @@ export default function SlotsPage() {
           <div className={styles.overlay}>
             <div className={styles.fsCard}>
               <Symbol s="scatter" className={styles.fsIcon} />
-              <strong>لفّات مجانية</strong>
+              <strong>بونص! لفّات مجانية</strong>
               <span className={`num ${styles.fsBig}`}>{round.outcome.freeSpins.length}</span>
               <span>
-                كل الأرباح <span className="num">×{FS_MULTIPLIER}</span>
+                المضاعف يبدأ <span className="num">×{FS_START_MULTIPLIER}</span> ويزيد <span className="num">{FS_MULTIPLIER_STEP}</span> بعد كل
+                لفّة رابحة
               </span>
             </div>
           </div>
@@ -281,13 +295,13 @@ export default function SlotsPage() {
               </div>
               <div className={styles.introRow}>
                 <Symbol s="wild" className={styles.introSym} />
-                <p>WILD يظهر على البكرات 2 و3 و4 ويحل محل أي رمز عدا FLOW.</p>
+                <p>WILD يظهر على البكرات 2 و3 و4 ويحل محل أي رمز عدا البونص.</p>
               </div>
               <div className={styles.introRow}>
                 <Symbol s="scatter" className={styles.introSym} />
                 <p>
-                  ثلاثة FLOW أو أكثر في أي مكان تفتح <span className="num">10</span> إلى <span className="num">20</span> لفّة مجانية، وكل
-                  أرباحها <span className="num">×{FS_MULTIPLIER}</span>.
+                  ثلاثة رموز بونص أو أكثر في أي مكان تفتح <span className="num">10</span> إلى <span className="num">20</span> لفّة مجانية،
+                  ومضاعفها يكبر مع كل لفّة رابحة.
                 </p>
               </div>
               <button
@@ -307,118 +321,60 @@ export default function SlotsPage() {
             </div>
           </div>
         )}
-        <WinBanner id={banner} net={round ? round.gross - round.stake : 0} multiplier={round ? round.gross / round.stake : 0} />
+        <WinBanner id={banner} gross={round?.gross ?? 0} stake={round?.stake ?? 1} />
       </div>
     </div>
   );
 
   const panel = (
-    <div className={styles.bar}>
-      <div className={styles.barInfo}>
-        <span className={styles.barLabel}>الرصيد</span>
-        <span className={`num ${styles.barValue}`}>{formatPoints(demo.balance - pending)}</span>
-      </div>
-      <div className={`${styles.barInfo} ${styles.barWin}`} aria-live="polite">
-        {inFree ? (
-          <>
-            <span className={styles.barLabel}>ربح اللفّات المجانية</span>
-            <span className={`num ${styles.winValue}`}>{formatPoints(fsWin)}</span>
-          </>
-        ) : lastWin > 0 && phase === "idle" ? (
-          <>
-            <span className={styles.barLabel}>الربح</span>
-            <span className={`num ${styles.winValue}`}>{formatPoints(lastWin)}</span>
-          </>
-        ) : (
-          <span className={styles.barHint}>{error ?? (busy ? "بالتوفيق…" : "ضع رهانك وأدِر البكرات")}</span>
-        )}
-      </div>
-      <div className={styles.betBox}>
-        <button type="button" className={styles.round} onClick={() => stepBet(-1)} disabled={busy || autoplay.running || stake <= BET_STEPS[0]} aria-label="خفض الرهان">
-          −
-        </button>
-        <div className={styles.barInfo}>
-          <span className={styles.barLabel}>الرهان</span>
-          <span className={`num ${styles.barValue}`}>{formatPoints(stake)}</span>
-        </div>
-        <button type="button" className={styles.round} onClick={() => stepBet(1)} disabled={busy || autoplay.running || stake >= BET_STEPS[BET_STEPS.length - 1]} aria-label="رفع الرهان">
-          +
-        </button>
-      </div>
-      <div className={styles.actions}>
-        <button type="button" className={styles.buy} onClick={() => setBuyOpen(true)} disabled={busy || autoplay.running || !demo.ready}>
-          <span>شراء اللفّات</span>
-          <span className="num">{formatPoints(stake * BUY_PRICE_MULTIPLIER)}</span>
-        </button>
-        <button type="button" className={styles.round} aria-pressed={turbo} onClick={() => setTurbo((t) => !t)} aria-label="لفّ سريع" title="لفّ سريع">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="currentColor" />
-          </svg>
-        </button>
-        <div className={styles.autoWrap}>
-          <button
-            type="button"
-            className={styles.round}
-            aria-pressed={autoplay.running}
-            onClick={() => (autoplay.running ? autoplay.stop() : setAutoOpen((o) => !o))}
-            aria-label="لعب تلقائي"
-            title="لعب تلقائي"
-          >
-            {autoplay.running ? (
-              <span className="num">{autoplay.left > 0 ? autoplay.left : "∞"}</span>
-            ) : (
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                <text x="12" y="15.5" textAnchor="middle" fontSize="8" fontWeight="800" fill="currentColor">
-                  A
-                </text>
-              </svg>
-            )}
-          </button>
-          {autoOpen && !autoplay.running && (
-            <div className={styles.popover}>
-              <AutoFields value={auto} onChange={setAuto} />
-              <button
-                type="button"
-                className={styles.popGo}
-                onClick={() => {
-                  setAutoOpen(false);
-                  autoplay.start(auto);
-                }}
-              >
-                ابدأ اللعب التلقائي
-              </button>
-            </div>
-          )}
-        </div>
-        <button
-          type="button"
-          className={`${styles.spin} ${busy ? styles.spinning : ""}`}
-          onClick={() => (autoplay.running ? autoplay.stop() : play(false))}
-          disabled={!demo.ready || (busy && !autoplay.running) || intro}
-          aria-label={autoplay.running ? "إيقاف" : "أدِر"}
-        >
-          {autoplay.running ? (
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" />
-            </svg>
+    <>
+      <ControlBar
+        balance={demo.balance - pending}
+        status={
+          inFree ? (
+            <BarStatus win={fsWin} label="ربح اللفّات المجانية" hint={<>بالتوفيق…</>} />
           ) : (
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M19 12a7 7 0 1 1-2-4.9" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
-              <path d="M19 4v4.5h-4.5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          )}
-        </button>
-      </div>
-
+            <BarStatus win={phase === "idle" ? lastWin : null} hint={error ?? (busy ? "بالتوفيق…" : "ضع رهانك وأدِر البكرات")} />
+          )
+        }
+        stake={stake}
+        onStake={setStake}
+        min={SLOTS_CONFIG.stake_limits.min}
+        max={SLOTS_CONFIG.stake_limits.max}
+        multipleOf={SLOTS_CONFIG.stake_limits.multiple_of}
+        locked={busy || autoplay.running}
+        extra={
+          <button type="button" className={styles.buy} onClick={() => setBuyOpen(true)} disabled={busy || autoplay.running || !demo.ready}>
+            <span>شراء البونص</span>
+            <span className="num">{formatPoints(stake * BUY_PRICE_MULTIPLIER)}</span>
+          </button>
+        }
+        turbo={turbo}
+        onTurbo={() => setTurbo((t) => !t)}
+        auto={{
+          running: autoplay.running,
+          left: autoplay.left,
+          net: autoplay.net,
+          onStart: autoplay.start,
+          onStop: autoplay.stop,
+          disabled: !demo.ready || busy || intro,
+        }}
+        primary={
+          autoplay.running
+            ? { kind: "stop", label: "إيقاف اللعب التلقائي", onClick: autoplay.stop }
+            : phase === "spinning" || phase === "fsSpinning"
+              ? { kind: "play", label: "إيقاف سريع", onClick: () => setQuickStop((q) => q + 1), busy: true }
+              : { kind: "play", label: "أدِر", onClick: () => play(false), disabled: !demo.ready || busy || intro }
+        }
+      />
       {buyOpen && (
         <div className={styles.modalBack} onClick={() => setBuyOpen(false)}>
-          <div className={styles.modal} role="dialog" aria-modal="true" aria-label="شراء اللفّات المجانية" onClick={(e) => e.stopPropagation()}>
+          <div className={styles.modal} role="dialog" aria-modal="true" aria-label="شراء البونص" onClick={(e) => e.stopPropagation()}>
             <Symbol s="scatter" className={styles.fsIcon} />
-            <h2>شراء اللفّات المجانية</h2>
+            <h2>شراء البونص</h2>
             <p>
-              تبدأ فوراً <span className="num">{BUY_SPINS}</span> لفّات مجانية، وكل أرباحها <span className="num">×{FS_MULTIPLIER}</span>. الرهان
-              لكل لفّة <span className="num">{formatPoints(stake)}</span>.
+              تبدأ فوراً <span className="num">{BUY_SPINS}</span> لفّات مجانية بمضاعف يبدأ <span className="num">×{FS_START_MULTIPLIER}</span> ويكبر
+              مع كل لفّة رابحة. الرهان لكل لفّة <span className="num">{formatPoints(stake)}</span>.
             </p>
             <div className={styles.modalPrice}>
               <span>السعر</span>
@@ -442,16 +398,14 @@ export default function SlotsPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 
   return (
     <GameFrame
       title="السلوتس"
-      balance={demo.balance - pending}
       onReset={demo.reset}
       resetDisabled={busy || autoplay.running}
-      panelPosition="bottom"
       rulesTitle="مختبر الليل: الجدول والقواعد"
       stage={stage}
       panel={panel}
@@ -531,8 +485,7 @@ function InfoSheet({ lineBet, rounds, rtp }: { lineBet: number; rounds: Round[];
       {tab === "pay" && (
         <>
           <p className="muted">
-            المبالغ بالنقاط لرهانك الحالي (رهان الخط = الرهان ÷ <span className="num">{LINE_COUNT}</span>). في اللفّات المجانية تُضرب ×
-            <span className="num">{FS_MULTIPLIER}</span>.
+            المبالغ بالنقاط لرهانك الحالي (رهان الخط = الرهان ÷ <span className="num">{LINE_COUNT}</span>). في اللفّات المجانية تُضرب بالمضاعف الحالي.
           </p>
           <div className={styles.payGrid}>
             {PAY_SYMBOLS.map((s) => (
@@ -579,19 +532,21 @@ function InfoSheet({ lineBet, rounds, rtp }: { lineBet: number; rounds: Round[];
         <div className={styles.rules}>
           <div className={styles.introRow}>
             <Symbol s="wild" className={styles.introSym} />
-            <p>WILD يظهر على البكرات 2 و3 و4 فقط، ويحل محل أي رمز عدا FLOW.</p>
+            <p>WILD يظهر على البكرات 2 و3 و4 فقط، ويحل محل أي رمز عدا البونص.</p>
           </div>
           <div className={styles.introRow}>
             <Symbol s="scatter" className={styles.introSym} />
             <p>
-              FLOW في أي مكان: <span className="num">3</span> = <span className="num">{freeSpinsFor(3)}</span> لفّات مجانية،{" "}
+              رمز البونص في أي مكان: <span className="num">3</span> = <span className="num">{freeSpinsFor(3)}</span> لفّات مجانية،{" "}
               <span className="num">4</span> = <span className="num">{freeSpinsFor(4)}</span>، <span className="num">5</span> ={" "}
-              <span className="num">{freeSpinsFor(5)}</span>. كل أرباح اللفّات المجانية ×<span className="num">{FS_MULTIPLIER}</span>، ولا تعيد
-              تشغيل نفسها. تأتي مرة كل <span className="num">{Math.round(rtp.triggerOneIn)}</span> لفّة في المتوسط.
+              <span className="num">{freeSpinsFor(5)}</span>. يبدأ المضاعف عند <span className="num">×{FS_START_MULTIPLIER}</span> ويزيد{" "}
+              <span className="num">{FS_MULTIPLIER_STEP}</span> بعد كل لفّة مجانية رابحة، فتكبر الأرباح كلما تقدمت. اللفّات المجانية لا تعيد
+              تشغيل نفسها، وتأتي مرة كل <span className="num">{Math.round(rtp.triggerOneIn)}</span> لفّة في المتوسط. عند ظهور رمزَي بونص تدور
+              البكرات الباقية أبطأ وتتوهج.
             </p>
           </div>
           <p>
-            شراء اللفّات: <span className="num">{BUY_SPINS}</span> لفّات مجانية فوراً بسعر <span className="num">{BUY_PRICE_MULTIPLIER}</span> ضعف الرهان،
+            شراء البونص: <span className="num">{BUY_SPINS}</span> لفّات مجانية فوراً بسعر <span className="num">{BUY_PRICE_MULTIPLIER}</span> ضعف الرهان،
             وعائده النظري <span className="num">{(rtp.buyValue * 100).toFixed(2)}%</span>.
           </p>
           <p>

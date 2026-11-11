@@ -69,36 +69,6 @@
   gap: 8px;
 }
 
-.wallet {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: var(--smoke);
-  border: 1px solid var(--hair);
-  transition: border-color 0.3s, box-shadow 0.3s;
-}
-
-.wallet :global(.num) {
-  font-size: 15.5px;
-  font-weight: 600;
-}
-
-.walletLabel {
-  font-size: 11.5px;
-  color: var(--signal-ink);
-}
-
-.up {
-  border-color: var(--win);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--win) 22%, transparent);
-}
-
-.down {
-  border-color: var(--hair);
-}
-
 .icon {
   display: grid;
   place-items: center;
@@ -125,8 +95,8 @@
 .body {
   flex: 1;
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr); /* RTL: panel on the right, stage on the left */
-  grid-template-areas: "panel stage";
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "stage" "panel";
   gap: 14px;
   width: min(100%, 1180px);
   margin: 0 auto;
@@ -136,7 +106,7 @@
 .stage {
   grid-area: stage;
   position: relative;
-  min-height: 520px;
+  min-height: 420px;
   display: flex;
   flex-direction: column;
   border-radius: 18px;
@@ -156,7 +126,6 @@
   border-radius: 18px;
   border: 1px solid var(--hair);
   background: var(--sheet);
-  align-self: start;
 }
 
 .below {
@@ -210,18 +179,31 @@
   border: 1px solid var(--hair);
 }
 
-.win {
+.t_small {
   color: var(--win);
   border-color: color-mix(in srgb, var(--win) 45%, var(--hair));
 }
 
-.big {
+.t_medium {
+  color: var(--paper);
+  background: color-mix(in srgb, var(--win) 70%, var(--sheet));
+  border-color: var(--win);
+}
+
+.t_big {
   color: var(--paper);
   background: var(--win);
   border-color: var(--win);
 }
 
-.loss {
+.t_epic {
+  color: var(--paper);
+  background: var(--signal);
+  border-color: var(--signal);
+}
+
+.t_loss,
+.t_none {
   color: var(--ink-3);
 }
 
@@ -294,15 +276,6 @@
   }
 }
 
-.bodyBottom {
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "stage" "panel";
-}
-
-.bodyBottom .panel {
-  align-self: stretch;
-}
-
 @media (max-width: 860px) {
   .body {
     grid-template-columns: minmax(0, 1fr);
@@ -313,15 +286,15 @@
   .stage {
     min-height: 0;
   }
+  .panel {
+    padding: 10px;
+  }
   .below {
     padding: 0 10px 32px;
   }
 }
 
 @media (max-width: 420px) {
-  .walletLabel {
-    display: none;
-  }
   .bar {
     padding: 8px 10px;
     gap: 8px;

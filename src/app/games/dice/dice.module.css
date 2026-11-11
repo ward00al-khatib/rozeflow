@@ -311,51 +311,6 @@ button.statBox svg {
   flex: none;
 }
 
-/* ---------- panel extras ---------- */
-.payout {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: var(--smoke);
-  color: var(--ink-3);
-  font-size: 13px;
-}
-
-.payout :global(.num) {
-  color: var(--ink);
-  font-size: 17px;
-  font-weight: 600;
-}
-
-.turbo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ink-2);
-  font-size: 13.5px;
-  cursor: pointer;
-}
-
-.turbo input {
-  accent-color: var(--signal);
-}
-
-.autoNet {
-  margin: 0;
-  text-align: center;
-  color: var(--ink-3);
-  font-size: 13.5px;
-}
-
-.keyHint {
-  margin: 0;
-  text-align: center;
-  color: var(--ink-3);
-  font-size: 12px;
-}
-
 /* ---------- my bets ---------- */
 .history {
   background: var(--sheet);
@@ -397,10 +352,6 @@ button.statBox svg {
     min-height: 0;
     padding: 14px 16px 0;
   }
-  /* On phones the play button comes first in the panel, right under the stage. */
-  .playSlot {
-    order: -1;
-  }
   .trackWrap {
     padding: 30px 18px 4px;
   }
@@ -417,8 +368,5 @@ button.statBox svg {
   .statBox input,
   button.statBox :global(.num) {
     font-size: 15px;
-  }
-  .keyHint {
-    display: none;
   }
 }

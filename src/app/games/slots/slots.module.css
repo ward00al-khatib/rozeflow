@@ -402,131 +402,6 @@
 }
 
 /* ---------- control bar ---------- */
-.bar {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.barInfo {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  line-height: 1.2;
-  min-width: 0;
-}
-
-.barLabel {
-  color: var(--ink-3);
-  font-size: 12px;
-}
-
-.barValue {
-  font-size: 19px;
-  font-weight: 700;
-}
-
-.barWin {
-  flex: 1;
-  align-items: center;
-  text-align: center;
-  min-width: 140px;
-}
-
-.winValue {
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--win);
-}
-
-.barHint {
-  color: var(--ink-2);
-  font-size: 15px;
-}
-
-.betBox {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.betBox .barInfo {
-  align-items: center;
-  min-width: 70px;
-}
-
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.round {
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  border: 1px solid var(--hair);
-  background: var(--smoke);
-  color: var(--ink);
-  font: inherit;
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.round svg {
-  width: 20px;
-  height: 20px;
-}
-
-.round[aria-pressed="true"] {
-  border-color: var(--signal);
-  color: var(--signal-ink);
-}
-
-.round:disabled,
-.buy:disabled,
-.spin:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.round :global(.num) {
-  font-size: 13px;
-}
-
-.spin {
-  display: grid;
-  place-items: center;
-  width: 74px;
-  height: 74px;
-  border-radius: 50%;
-  border: 3px solid #ffd2a1;
-  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--signal) 80%, #fff), var(--signal) 60%, #b84c0b);
-  color: var(--paper);
-  cursor: pointer;
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--signal) 40%, transparent), inset 0 -4px 0 rgb(0 0 0 / 0.2);
-  transition: transform 0.1s;
-}
-
-.spin:active:not(:disabled) {
-  transform: scale(0.95);
-}
-
-.spin svg {
-  width: 34px;
-  height: 34px;
-}
-
-.spinning svg {
-  animation: spinSlow 0.6s linear infinite;
-}
-
 .buy {
   display: flex;
   flex-direction: column;
@@ -548,23 +423,9 @@
   font-size: 14px;
 }
 
-.autoWrap {
-  position: relative;
-}
-
-.popover {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  inset-inline-end: -60px;
-  z-index: 30;
-  width: 290px;
-  display: grid;
-  gap: 10px;
-  padding: 14px;
-  border-radius: 16px;
-  background: var(--sheet);
-  border: 1px solid var(--hair);
-  box-shadow: 0 20px 50px rgb(0 0 0 / 0.5);
+.buy:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .modalBack {
@@ -797,34 +658,8 @@
 }
 
 @media (max-width: 760px) {
-  .bar {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-areas: "bal win" "bet bet" "act act";
-    gap: 10px;
-  }
-  .bar > .barInfo:first-child {
-    grid-area: bal;
-  }
-  .barWin {
-    grid-area: win;
-    align-items: flex-end;
-    text-align: left;
-    min-width: 0;
-  }
-  .betBox {
-    grid-area: bet;
-    justify-content: center;
-  }
-  .actions {
-    grid-area: act;
-    justify-content: space-between;
-  }
-  .winValue {
-    font-size: 22px;
-  }
   .scene {
-    padding: 10px 8px 18px;
+    padding: 42px 8px 18px;
   }
   .machine {
     padding: 8px;
@@ -833,9 +668,6 @@
   .window {
     padding: 4px;
     gap: 3px;
-  }
-  .popover {
-    inset-inline-end: -120px;
   }
   .intro {
     gap: 8px;
@@ -856,5 +688,41 @@
   }
   .gameName {
     font-size: 20px;
+  }
+}
+
+/* ---------- 2.1 additions ---------- */
+.strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+}
+
+.scene {
+  padding-top: 46px;
+}
+
+.multBadge {
+  display: inline-block;
+  margin-inline-start: 10px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--signal);
+  color: var(--paper);
+  font-weight: 800;
+  animation: pop 0.4s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+/* Anticipation: after two bonus symbols the later reels glow while they spin longer. */
+.anticipate {
+  box-shadow: inset 0 0 0 2px var(--signal), 0 0 24px color-mix(in srgb, var(--signal) 55%, transparent);
+  animation: antic 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes antic {
+  to {
+    box-shadow: inset 0 0 0 2px #ffd2a1, 0 0 36px color-mix(in srgb, var(--signal) 80%, transparent);
   }
 }

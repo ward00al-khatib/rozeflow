@@ -1,0 +1,328 @@
+.bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.label {
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.value {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.balance {
+  padding: 4px 10px;
+  border-radius: 12px;
+  transition: box-shadow 0.3s;
+}
+
+.up {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--win) 55%, transparent);
+}
+
+.status {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  line-height: 1.2;
+  min-width: 120px;
+}
+
+.win {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--win);
+}
+
+.hint {
+  color: var(--ink-2);
+  font-size: 14.5px;
+}
+
+.stake {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stakeValue {
+  align-items: center;
+  min-width: 78px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.stakeValue:hover:not(:disabled) {
+  background: var(--smoke);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.round {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--hair);
+  background: var(--smoke);
+  color: var(--ink);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.round svg {
+  width: 20px;
+  height: 20px;
+}
+
+.round :global(.num) {
+  font-size: 13px;
+}
+
+.round[aria-pressed="true"] {
+  border-color: var(--signal);
+  color: var(--signal-ink);
+}
+
+.round:disabled,
+.primary:disabled,
+.stakeValue:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* The big round play button: same place in every game. Orange takes navy text (spec 23). */
+.primary {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  flex: none;
+  border-radius: 50%;
+  border: 3px solid #ffd2a1;
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--signal) 80%, #fff), var(--signal) 60%, #b84c0b);
+  color: var(--paper);
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--signal) 40%, transparent), inset 0 -4px 0 rgb(0 0 0 / 0.2);
+  transition: transform 0.1s;
+}
+
+.primary:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.primary svg {
+  width: 34px;
+  height: 34px;
+}
+
+.cash {
+  border-color: #bff3dc;
+  background: radial-gradient(circle at 50% 35%, #8ef0c2, var(--win) 60%, #17895a);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--win) 40%, transparent), inset 0 -4px 0 rgb(0 0 0 / 0.2);
+  animation: breathe 1.2s ease-in-out infinite;
+}
+
+.stop {
+  border-color: var(--ink-3);
+  background: var(--smoke);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.cashText {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.cashText :global(.num) {
+  font-size: 12px;
+}
+
+.busy svg {
+  animation: turn 0.6s linear infinite;
+}
+
+@keyframes turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes breathe {
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.autoWrap {
+  position: relative;
+}
+
+.popover {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  z-index: 40;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--sheet);
+  border: 1px solid var(--hair);
+  box-shadow: 0 20px 50px rgb(0 0 0 / 0.5);
+  animation: rise 0.2s ease;
+}
+
+.autoPop {
+  inset-inline-end: -60px;
+  width: 290px;
+}
+
+.stakePop {
+  left: 50%;
+  transform: translateX(-50%);
+  width: 280px;
+  animation: none;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.input {
+  width: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chips button {
+  flex: 1 0 auto;
+  min-width: 44px;
+  padding: 6px 8px;
+  border-radius: 9px;
+  border: 1px solid var(--hair);
+  background: var(--smoke);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chips button[aria-pressed="true"] {
+  color: var(--ink);
+  border-color: var(--signal);
+}
+
+.go {
+  border: 0;
+  border-radius: 12px;
+  padding: 11px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--signal) 88%, #fff), var(--signal));
+  color: var(--paper);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.autoNet {
+  position: absolute;
+  top: -26px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: var(--paper);
+  border: 1px solid var(--hair);
+  color: var(--ink-3);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.pos {
+  color: var(--win);
+}
+
+@media (max-width: 760px) {
+  .bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "bal status" "stake stake" "act act";
+    gap: 8px;
+  }
+  .balance {
+    grid-area: bal;
+    padding: 0;
+  }
+  .status {
+    grid-area: status;
+    align-items: flex-end;
+    text-align: left;
+    min-width: 0;
+  }
+  .stake {
+    grid-area: stake;
+    justify-content: center;
+  }
+  .actions {
+    grid-area: act;
+    justify-content: space-between;
+  }
+  .win {
+    font-size: 22px;
+  }
+  .autoPop {
+    inset-inline-end: -110px;
+  }
+  .primary {
+    width: 70px;
+    height: 70px;
+  }
+}

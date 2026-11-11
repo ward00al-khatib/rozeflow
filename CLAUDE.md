@@ -7,3 +7,4 @@
 - Odds are global per config version; never per player (spec 2.4).
 - Brand: spec section 23. Orange buttons take navy text; cyan for one key element per screen; numbers use the .num class (JetBrains Mono); loss is muted grey, not red.
 - Before pushing: npm run lint && npm run typecheck && npm test && npm run build, plus npm run test:db when SQL changes.
+- Supabase project ref: mozhdjtszorqrzuynqne (public URL/key in src/lib/supabase/config.ts). This sandbox cannot reach supabase.co or github.io; migrations reach production only through .github/workflows/supabase.yml on merge to main.

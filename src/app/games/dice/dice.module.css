@@ -1,79 +1,86 @@
-.page {
-  display: grid;
-  gap: 18px;
-  width: min(100%, 640px);
-  margin: 0 auto;
-}
-
-.titleRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.title {
-  margin: 0;
-  font-size: 30px;
-}
-
-.demoBadge {
-  font-size: 12.5px;
-  color: var(--signal-ink);
-  border: 1px solid var(--signal-ink);
-  border-radius: 999px;
-  padding: 2px 10px;
-}
-
-.board,
-.controls,
-.history {
-  background: var(--sheet);
-  border: 1px solid var(--hair);
-  border-radius: var(--radius);
-  padding: 18px 16px;
-}
-
-.board {
-  background-image: radial-gradient(var(--dot) 1px, transparent 1px);
-  background-size: 22px 22px;
-}
-
-.rollBox {
+.center {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  margin-bottom: 18px;
-  min-height: 132px;
+  justify-content: center;
+  gap: 10px;
+  padding: 26px 16px 10px;
+  min-height: 240px;
 }
 
-.rollLabel {
-  color: var(--ink-3);
-  font-size: 13px;
+/* The die: a rounded tile holding the roll. The roll is the one cyan element on this screen. */
+.die {
+  display: grid;
+  place-items: center;
+  min-width: min(78%, 300px);
+  padding: 18px 28px;
+  border-radius: 26px;
+  background: linear-gradient(160deg, var(--smoke), var(--sheet));
+  border: 1px solid var(--hair);
+  box-shadow: 0 24px 50px rgb(0 0 0 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.04);
+  transition: border-color 0.25s, box-shadow 0.25s;
 }
 
-/* The one cyan element on this screen (spec 23.3). */
 .roll {
-  font-size: clamp(56px, 16vw, 84px);
-  font-weight: 500;
-  line-height: 1.1;
+  font-size: clamp(54px, 13vw, 92px);
+  font-weight: 700;
+  line-height: 1;
   color: var(--signal-2);
-  transition: transform 0.2s ease;
 }
 
-.rolling {
-  animation: pop 0.45s ease;
+.dieRolling {
+  animation: shake 0.16s linear infinite;
 }
 
-@keyframes pop {
-  0% { transform: scale(0.86); opacity: 0.4; }
-  60% { transform: scale(1.06); opacity: 1; }
-  100% { transform: scale(1); }
+.dieRolling .roll {
+  opacity: 0.75;
 }
 
-.resultLine {
-  font-size: 16px;
+.dieWin {
+  border-color: var(--win);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--win) 14%, transparent), 0 24px 60px color-mix(in srgb, var(--win) 18%, transparent);
+  animation: land 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.dieLoss {
+  animation: land 0.3s ease;
+}
+
+.dieLoss .roll {
+  opacity: 0.7;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: rotate(0) translateY(0);
+  }
+  25% {
+    transform: rotate(-1.5deg) translateY(-2px);
+  }
+  75% {
+    transform: rotate(1.5deg) translateY(1px);
+  }
+}
+
+@keyframes land {
+  from {
+    transform: scale(1.08);
+  }
+}
+
+.caption {
+  margin: 0;
+  min-height: 28px;
+  font-size: 17px;
   font-weight: 600;
+}
+
+.hint {
+  color: var(--ink-3);
+  font-weight: 400;
+  font-size: 14.5px;
 }
 
 .win {
@@ -84,143 +91,278 @@
   color: var(--loss);
 }
 
-.roll.win,
-.roll.loss {
-  color: var(--signal-2);
+/* ---------- track ---------- */
+.trackWrap {
+  padding: 34px 26px 6px;
+}
+
+.scale {
+  position: relative;
+  height: 18px;
+  margin-bottom: 8px;
+}
+
+.scale span {
+  position: absolute;
+  transform: translateX(-50%);
+  color: var(--ink-3);
+  font-size: 12px;
 }
 
 .track {
   position: relative;
-  height: 14px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.rail {
+  position: absolute;
+  inset: 13px 0;
   border-radius: 999px;
-  background: var(--smoke);
+  background: var(--paper);
   border: 1px solid var(--hair);
-  margin: 0 4px 30px;
+  box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.5);
+  overflow: hidden;
 }
 
 .zone {
   position: absolute;
   top: 0;
   bottom: 0;
-  background: color-mix(in srgb, var(--win) 55%, transparent);
-  border-radius: 999px;
-}
-
-.marker {
-  position: absolute;
-  top: -7px;
-  width: 4px;
-  height: 26px;
-  margin-left: -2px;
-  border-radius: 2px;
-  background: var(--ink-3);
-  transition: left 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.markerWin {
-  background: var(--ink);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--win) 45%, transparent);
-}
-
-.ticks {
-  position: absolute;
-  inset: 20px 0 auto 0;
-  display: flex;
-  justify-content: space-between;
-  color: var(--ink-3);
-  font-size: 11.5px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--win) 85%, #fff), var(--win));
+  transition: left 0.08s, width 0.08s;
 }
 
 .slider {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  accent-color: var(--signal);
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: grab;
 }
 
-.toggle {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 16px;
+.slider:disabled {
+  cursor: not-allowed;
 }
 
-.toggle button {
+.slider::-webkit-slider-runnable-track {
+  height: 44px;
+  background: transparent;
+}
+
+.slider::-moz-range-track {
+  height: 44px;
+  background: transparent;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 30px;
+  height: 40px;
+  margin-top: 2px;
+  border-radius: 9px;
+  background:
+    linear-gradient(90deg, transparent 9px, var(--paper) 9px 11px, transparent 11px 14px, var(--paper) 14px 16px, transparent 16px 19px, var(--paper) 19px 21px, transparent 21px)
+      center / 100% 40% no-repeat,
+    var(--signal);
+  border: 0;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.45);
+}
+
+.slider::-moz-range-thumb {
+  width: 30px;
+  height: 40px;
+  border-radius: 9px;
+  background: var(--signal);
+  border: 0;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.45);
+}
+
+.slider:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Result marker: a tag above the track that slides to the roll. */
+.marker {
+  position: absolute;
+  bottom: 40px;
+  transform: translateX(-50%);
+  transition-property: left;
+  transition-timing-function: cubic-bezier(0.25, 0.9, 0.3, 1);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.marker span {
+  display: block;
+  padding: 3px 9px;
+  border-radius: 8px;
   background: var(--smoke);
-  color: var(--ink-2);
   border: 1px solid var(--hair);
-  border-radius: 10px;
-  padding: 10px;
-  font: inherit;
-  cursor: pointer;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.toggle button[aria-pressed="true"] {
+.marker::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 2px;
+  height: 18px;
+  margin-left: -1px;
+  background: var(--ink-3);
+}
+
+.markerWin span {
+  background: var(--win);
+  border-color: var(--win);
+  color: var(--paper);
+}
+
+.markerWin::after {
+  background: var(--win);
+}
+
+.markerLoss span {
   color: var(--ink);
-  border-color: var(--signal);
 }
 
+/* ---------- stats under the track ---------- */
 .stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin: 0 0 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px 16px 16px;
 }
 
-.stats div {
-  background: var(--smoke);
-  border-radius: 10px;
-  padding: 8px 10px;
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
 }
 
-.stats dt {
+.stat > span:first-child {
   color: var(--ink-3);
   font-size: 12.5px;
 }
 
-.stats dd {
-  margin: 0;
-  font-size: 17px;
-  text-align: right;
-}
-
-.stakeRow {
+.statBox {
   display: flex;
-  gap: 8px;
-}
-
-.stakeRow .btn-secondary,
-.stakeRow :global(.btn-secondary) {
-  padding: 0 14px;
-}
-
-.rollButton {
-  width: 100%;
-  font-size: 18px;
-  padding: 14px;
-}
-
-.balance {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-top: 14px;
-  color: var(--ink-2);
-  font-size: 14px;
-}
-
-.balance :global(.num) {
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: var(--paper);
+  border: 1px solid var(--hair);
   color: var(--ink);
-  font-size: 18px;
+  font: inherit;
+  cursor: text;
 }
 
-.linkButton {
-  background: none;
+.statBox:focus-within {
+  border-color: var(--ink-3);
+}
+
+.statBox input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  background: transparent;
   border: 0;
+  outline: none;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 600;
+  padding: 0;
+}
+
+.statBox i {
+  font-style: normal;
   color: var(--ink-3);
-  font: inherit;
-  font-size: 13px;
+}
+
+button.statBox {
   cursor: pointer;
-  text-decoration: underline;
+  justify-content: space-between;
+}
+
+button.statBox:hover:not(:disabled) {
+  border-color: var(--signal);
+}
+
+button.statBox :global(.num) {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+button.statBox svg {
+  width: 18px;
+  height: 18px;
+  color: var(--signal-ink);
+  flex: none;
+}
+
+/* ---------- panel extras ---------- */
+.payout {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--smoke);
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+.payout :global(.num) {
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.turbo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-2);
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.turbo input {
+  accent-color: var(--signal);
+}
+
+.autoNet {
+  margin: 0;
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 13.5px;
+}
+
+.keyHint {
+  margin: 0;
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+/* ---------- my bets ---------- */
+.history {
+  background: var(--sheet);
+  border: 1px solid var(--hair);
+  border-radius: 18px;
+  padding: 16px;
+  overflow-x: auto;
 }
 
 .history h2 {
@@ -240,16 +382,43 @@
   text-align: right;
   padding: 4px 6px;
   border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
 }
 
 .history td {
-  padding: 6px;
+  padding: 7px 6px;
   text-align: right;
   border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
 }
 
-@media (max-width: 420px) {
-  .stats dd {
+@media (max-width: 860px) {
+  .center {
+    min-height: 0;
+    padding: 14px 16px 0;
+  }
+  /* On phones the play button comes first in the panel, right under the stage. */
+  .playSlot {
+    order: -1;
+  }
+  .trackWrap {
+    padding: 30px 18px 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats {
+    gap: 6px;
+    padding: 12px 10px 12px;
+  }
+  .statBox {
+    padding: 8px 8px;
+  }
+  .statBox input,
+  button.statBox :global(.num) {
     font-size: 15px;
+  }
+  .keyHint {
+    display: none;
   }
 }

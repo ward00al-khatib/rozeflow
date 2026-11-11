@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMember } from "@/lib/useMember";
 import styles from "./page.module.css";
 
@@ -10,6 +10,20 @@ const GAMES = ["النرد", "الروليت", "بلينكو", "الألغام",
 export default function Home() {
   const member = useMember();
   const router = useRouter();
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  // Supabase sends failed email links back as #error=...&error_code=... (e.g. otp_expired).
+  useEffect(() => {
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const code = hash.get("error_code") ?? hash.get("error");
+    if (!code) return;
+    setLinkError(
+      code === "otp_expired"
+        ? "رابط الدعوة منتهي الصلاحية أو استُخدم من قبل. اطلب من صاحب الموقع إرسال دعوة جديدة، وافتح الرابط مرة واحدة فقط."
+        : "تعذّر استخدام هذا الرابط. اطلب من صاحب الموقع إرسال رابط جديد.",
+    );
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  }, []);
 
   // Invite links from the Supabase dashboard land here; send them on to finish joining.
   useEffect(() => {
@@ -34,6 +48,7 @@ export default function Home() {
         ))}
       </ul>
 
+      {linkError && <p className="error" role="alert">{linkError}</p>}
       {member.status === "member" ? (
         <Link href="/wallet/" className="btn-primary">محفظتي</Link>
       ) : member.status === "signed_out" ? (

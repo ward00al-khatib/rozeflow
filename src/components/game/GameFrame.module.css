@@ -112,9 +112,12 @@
   border-radius: 18px;
   border: 1px solid var(--hair);
   background:
+    radial-gradient(900px 380px at 50% -10%, color-mix(in srgb, var(--tint, transparent) 22%, transparent), transparent 70%),
+    radial-gradient(700px 320px at 100% 110%, color-mix(in srgb, var(--tint, transparent) 12%, transparent), transparent 70%),
     radial-gradient(var(--dot) 1px, transparent 1px) 0 0 / 22px 22px,
     linear-gradient(180deg, var(--sheet), color-mix(in srgb, var(--sheet) 70%, var(--paper)));
   overflow: hidden;
+  isolation: isolate;
 }
 
 .panel {

@@ -9,10 +9,25 @@
   --pocket: #23795c;
 }
 
+.wheelRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 50px 14px 0;
+}
+
+.round {
+  flex: none;
+  width: 230px;
+  height: 230px;
+  filter: drop-shadow(0 16px 30px rgb(0 0 0 / 0.5));
+}
+
 .wheel {
   position: relative;
+  flex: 1;
+  min-width: 0;
   height: 86px;
-  margin: 50px 14px 0;
   border-radius: 14px;
   background: color-mix(in srgb, var(--paper) 55%, var(--sheet));
   border: 1px solid var(--hair);
@@ -168,8 +183,18 @@
 }
 
 @media (max-width: 760px) {
-  .wheel {
+  .wheelRow {
+    flex-direction: column;
+    gap: 10px;
     margin: 42px 8px 0;
+  }
+  .round {
+    width: 210px;
+    height: 210px;
+  }
+  .wheel {
+    flex: none;
+    width: 100%;
   }
   .tableWrap {
     padding: 12px 8px 0;

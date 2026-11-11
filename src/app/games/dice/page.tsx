@@ -32,6 +32,33 @@ const TURBO_MS = 180;
 
 type Round = DemoRound<DiceBet, DiceOutcome>;
 
+const PIPS: Record<number, [number, number][]> = {
+  1: [[0, 0]],
+  2: [[-1, -1], [1, 1]],
+  3: [[-1, -1], [0, 0], [1, 1]],
+  4: [[-1, -1], [1, -1], [-1, 1], [1, 1]],
+  5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]],
+  6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]],
+};
+
+/** A decorative die beside the roll. Its face only follows the number on screen; it decides nothing. */
+function Cube({ face, className }: { face: number; className: string }) {
+  return (
+    <svg viewBox="-34 -34 68 68" className={className} aria-hidden="true">
+      <defs>
+        <linearGradient id="dc-face" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#f6f9ff" />
+          <stop offset="1" stopColor="#aebbd6" />
+        </linearGradient>
+      </defs>
+      <rect x="-28" y="-28" width="56" height="56" rx="13" fill="url(#dc-face)" stroke="#fff" strokeOpacity="0.7" strokeWidth="1.5" />
+      {PIPS[face].map(([x, y], i) => (
+        <circle key={i} cx={x * 14} cy={y * 14} r="5" fill="#0c1120" />
+      ))}
+    </svg>
+  );
+}
+
 export default function DicePage() {
   const demo = useDemoSession();
   const [direction, setDirection] = useState<DiceDirection>("under");
@@ -146,12 +173,16 @@ export default function DicePage() {
       />
 
       <div className={styles.center}>
-        <div
-          className={`${styles.die} ${rolling ? styles.dieRolling : ""} ${outcome ? (outcome.win ? styles.dieWin : styles.dieLoss) : ""}`}
-        >
-          <span className={`num ${styles.roll}`}>
-            {shown === null ? "50.00" : fmtRoll(shown)}
-          </span>
+        <div className={styles.dieRow}>
+          <Cube face={((shown ?? 4999) % 6) + 1} className={`${styles.cube} ${styles.cubeA} ${rolling ? styles.cubeRolling : ""}`} />
+          <div
+            className={`${styles.die} ${rolling ? styles.dieRolling : ""} ${outcome ? (outcome.win ? styles.dieWin : styles.dieLoss) : ""}`}
+          >
+            <span className={`num ${styles.roll}`}>
+              {shown === null ? "50.00" : fmtRoll(shown)}
+            </span>
+          </div>
+          <Cube face={(Math.floor((shown ?? 5000) / 7) % 6) + 1} className={`${styles.cube} ${styles.cubeB} ${rolling ? styles.cubeRolling : ""}`} />
         </div>
         <p className={styles.caption} aria-live="polite">
           {rolling ? (
@@ -337,6 +368,7 @@ export default function DicePage() {
   return (
     <GameFrame
       title="النرد"
+      tint="#3ddcff"
       onReset={demo.reset}
       resetDisabled={locked}
       stage={stage}

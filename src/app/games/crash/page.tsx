@@ -141,6 +141,9 @@ export default function CrashPage() {
   }
   const line = pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
   const head = pts[pts.length - 1];
+  // Nose direction: along the curve (the stage is about twice as wide as it is tall per unit).
+  const prev = pts[pts.length - 4] ?? pts[0];
+  const tilt = 90 - (Math.atan2(prev[1] - head[1], (head[0] - prev[0]) * 1.6 + 0.001) * 180) / Math.PI;
 
   const crashed = !flying && last !== null;
   const won = crashed && last!.outcome.cashedAt !== null;
@@ -158,6 +161,7 @@ export default function CrashPage() {
       <WinBanner id={last ? `${last.serverSeedHash}:${last.nonce}` : null} gross={last?.gross ?? 0} stake={last?.stake ?? 1} />
 
       <div className={`${styles.sky} ${crashed && !won ? styles.boom : ""}`}>
+        <div className={`${styles.stars} ${flying ? styles.starsLive : ""}`} aria-hidden="true" />
         <svg viewBox={`0 0 ${W} ${H}`} className={styles.svg} preserveAspectRatio="none" aria-hidden="true">
           {end > 0 && (
             <>
@@ -168,9 +172,24 @@ export default function CrashPage() {
         </svg>
         {end > 0 && (
           <span
-            className={`${styles.head} ${crashed ? (won ? styles.headWin : styles.headLoss) : ""}`}
+            className={styles.head}
             style={{ left: `calc(16px + (100% - 32px) * ${(head[0] / W).toFixed(4)})`, top: `calc(16px + (100% - 28px) * ${(head[1] / H).toFixed(4)})` }}
-          />
+          >
+            {crashed && !won ? (
+              <span key={`${last!.serverSeedHash}:${last!.nonce}`} className={styles.blast}>
+                {Array.from({ length: 10 }, (_, i) => (
+                  <i key={i} style={{ transform: `rotate(${i * 36}deg)` }} />
+                ))}
+              </span>
+            ) : (
+              <svg viewBox="-20 -30 40 62" className={`${styles.rocket} ${flying ? styles.rocketLive : ""}`} style={{ transform: `translate(-50%, -50%) rotate(${tilt.toFixed(1)}deg)` }} aria-hidden="true">
+                <path className={styles.flame} d="M-6 14h12l-6 18z" fill="#ffd27a" />
+                <path d="M0 -28c11 8 13 24 10 42h-20c-3-18-1-34 10-42z" fill={won ? "#3ecf8e" : "#eef2f8"} />
+                <circle cy="-8" r="5" fill="#0c1120" stroke="#9fb4ff" strokeWidth="1.5" />
+                <path d="M-10 6l-9 12 9-3zM10 6l9 12-9-3z" fill="#ff8a1f" />
+              </svg>
+            )}
+          </span>
         )}
         <div className={styles.overlay} aria-live="polite">
           <span className={`num ${styles.mult} ${crashed && !won ? styles.multLoss : ""} ${won ? styles.multWin : ""}`}>
@@ -280,6 +299,7 @@ export default function CrashPage() {
   return (
     <GameFrame
       title="كراش"
+      tint="#ff8a1f"
       onReset={demo.reset}
       resetDisabled={locked}
       stage={stage}

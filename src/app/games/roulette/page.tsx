@@ -41,6 +41,13 @@ const COLUMNS: Spot[] = [1, 2, 3].map((v) => ({ kind: "column", value: v, label:
 const WHEEL = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
 const LAPS = 5; // copies of the wheel in the strip
 const CELL = 56; // px per pocket in the strip
+const STEP = 360 / WHEEL.length; // degrees per pocket on the round wheel
+/** One pocket of the round wheel: a wedge from radius 70 to 98, centred on 12 o'clock. */
+const WEDGE = (() => {
+  const a = ((STEP / 2) * Math.PI) / 180;
+  const p = (r: number, sign: number) => `${(sign * r * Math.sin(a)).toFixed(2)} ${(-r * Math.cos(a)).toFixed(2)}`;
+  return `M${p(70, -1)}L${p(98, -1)}A98 98 0 0 1 ${p(98, 1)}L${p(70, 1)}A70 70 0 0 0 ${p(70, -1)}z`;
+})();
 const SPIN_MS = 2600;
 const TURBO_MS = 700;
 
@@ -154,6 +161,11 @@ export default function RoulettePage() {
     );
   }
 
+  const spinStyle = (deg: number): CSSProperties => ({
+    transform: `rotate(${deg.toFixed(3)}deg)`,
+    transition: wheel.animate ? `transform ${turbo ? TURBO_MS : SPIN_MS}ms cubic-bezier(0.12, 0.8, 0.22, 1)` : "none",
+  });
+
   const stage = (
     <>
       <ResultStrip
@@ -165,26 +177,59 @@ export default function RoulettePage() {
       />
       <WinBanner id={shown ? `${shown.serverSeedHash}:${shown.nonce}` : null} gross={shown?.gross ?? 0} stake={shown?.stake ?? 1} />
 
-      <div className={styles.wheel} dir="ltr" aria-live="polite" aria-label={shown ? `الخانة ${shown.outcome.pocket}` : undefined}>
-        <div
-          className={styles.strip}
-          style={{
-            transform: `translateX(${-(wheel.index + 0.5) * CELL}px)`,
-            transition: wheel.animate ? `transform ${turbo ? TURBO_MS : SPIN_MS}ms cubic-bezier(0.12, 0.8, 0.22, 1)` : "none",
-          }}
-        >
-          {Array.from({ length: LAPS }, (_, lap) =>
-            WHEEL.map((n, i) => (
-              <span
-                key={`${lap}-${i}`}
-                className={`num ${styles.slot} ${pocketClass(n)} ${shown && !wheel.animate && lap === 0 && n === shown.outcome.pocket ? styles.slotHit : ""}`}
-              >
-                {n}
-              </span>
-            )),
-          )}
+      <div className={styles.wheelRow} dir="ltr" aria-live="polite" aria-label={shown ? `الخانة ${shown.outcome.pocket}` : undefined}>
+        <svg viewBox="-104 -104 208 208" className={styles.round} aria-hidden="true">
+          <defs>
+            <linearGradient id="rl-gold" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#ffe08a" />
+              <stop offset="0.55" stopColor="#ffae3d" />
+              <stop offset="1" stopColor="#b8651c" />
+            </linearGradient>
+          </defs>
+          <circle r="102" fill="#141c33" stroke="url(#rl-gold)" strokeWidth="4" />
+          <g style={spinStyle(-wheel.index * STEP)}>
+            {WHEEL.map((n, i) => (
+              <g key={n} transform={`rotate(${i * STEP})`}>
+                <path d={WEDGE} fill={n === 0 ? "#23795c" : isRed(n) ? "#b9405a" : "#1b2236"} stroke="#0a0f1d" strokeWidth="0.6" />
+                <text y="-79.5" textAnchor="middle" fontSize="11" fontWeight="700" fontFamily="var(--font-mono), monospace" fill="#fff">
+                  {n}
+                </text>
+              </g>
+            ))}
+            <circle r="70" fill="none" stroke="url(#rl-gold)" strokeWidth="2" />
+            <circle r="68" fill="#0c1120" />
+            <path d="M0 -60V60M-60 0H60M-42 -42L42 42M-42 42L42 -42" stroke="#273250" strokeWidth="1.5" />
+          </g>
+          <g style={spinStyle(wheel.animate ? 0 : spinning ? 1080 : 0)}>
+            <circle cy="-66" r="5" fill="#fff" style={{ filter: "drop-shadow(0 0 4px #fff)" }} />
+          </g>
+          <circle r="30" className={shown ? pocketClass(shown.outcome.pocket) : undefined} style={{ fill: "var(--pocket, #131a2c)" }} stroke="url(#rl-gold)" strokeWidth="3" />
+          <text y="9" textAnchor="middle" fontSize="26" fontWeight="700" fontFamily="var(--font-mono), monospace" fill="#fff">
+            {shown ? shown.outcome.pocket : ""}
+          </text>
+          <path d="M-7 -104h14l-7 14z" fill="url(#rl-gold)" stroke="#0a0f1d" strokeWidth="1" />
+        </svg>
+        <div className={styles.wheel}>
+          <div
+            className={styles.strip}
+            style={{
+              transform: `translateX(${-(wheel.index + 0.5) * CELL}px)`,
+              transition: wheel.animate ? `transform ${turbo ? TURBO_MS : SPIN_MS}ms cubic-bezier(0.12, 0.8, 0.22, 1)` : "none",
+            }}
+          >
+            {Array.from({ length: LAPS }, (_, lap) =>
+              WHEEL.map((n, i) => (
+                <span
+                  key={`${lap}-${i}`}
+                  className={`num ${styles.slot} ${pocketClass(n)} ${shown && !wheel.animate && lap === 0 && n === shown.outcome.pocket ? styles.slotHit : ""}`}
+                >
+                  {n}
+                </span>
+              )),
+            )}
+          </div>
+          <span className={styles.marker} aria-hidden="true" />
         </div>
-        <span className={styles.marker} aria-hidden="true" />
       </div>
 
       <div className={styles.tableWrap}>
@@ -272,6 +317,7 @@ export default function RoulettePage() {
   return (
     <GameFrame
       title="الروليت"
+      tint="#b9405a"
       onReset={demo.reset}
       resetDisabled={locked}
       stage={stage}

@@ -16,6 +16,32 @@
 
 .peg {
   fill: var(--ink-3);
+  transition: fill 0.9s ease, filter 0.9s ease;
+}
+
+/* A peg the ball bounced off lights up, then cools slowly. */
+.pegHit {
+  fill: #ffd27a;
+  filter: drop-shadow(0 0 5px var(--signal));
+  transition-duration: 0s;
+  animation: pegPop 0.25s ease-out;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes pegPop {
+  from {
+    transform: scale(1.9);
+  }
+}
+
+.trail {
+  fill: none;
+  stroke: var(--signal-2);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.28;
 }
 
 /* The one cyan element on this screen. */
@@ -62,6 +88,8 @@
   outline: 2px solid var(--signal-2);
   transform: translateY(4px);
   animation: bounce 0.35s ease;
+  filter: brightness(1.35);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--signal-2) 60%, transparent);
 }
 
 @keyframes bounce {

@@ -46,7 +46,7 @@
 .glowA {
   left: -12%;
   top: -18%;
-  background: #3ddcff;
+  background: var(--tint, #3ddcff);
 }
 
 .glowB {

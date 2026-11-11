@@ -1,0 +1,86 @@
+/* ROZEFLOW design tokens — spec section 23, from the ROZE brand guide ("Night Lab"). */
+:root {
+  --paper: #06080f;      /* page background */
+  --sheet: #0c1120;      /* cards, game boards */
+  --smoke: #131a2c;      /* raised surfaces */
+  --ink: #eef2f8;        /* primary text */
+  --ink-2: #aeb8ca;      /* secondary text */
+  --ink-3: #8290a8;      /* muted text, also "loss" */
+  --rule: #182037;
+  --hair: #273250;
+  --dot: #171d2c;        /* dot grid */
+
+  --signal: #ff8a1f;     /* orange: primary actions only, with navy text */
+  --signal-ink: #ffae5c; /* orange for small text */
+  --signal-2: #3ddcff;   /* cyan: one key element per screen (live multiplier, FLOW) */
+
+  --win: #3ecf8e;        /* net win (new in ROZEFLOW) */
+  --loss: var(--ink-3);  /* net loss: calm, never alarming red */
+  --void: var(--ink-2);
+
+  --radius: 14px;
+  --font-body: system-ui, sans-serif;
+  --font-heading: var(--font-body);
+  --font-mono: ui-monospace, monospace;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 16.5px;
+  line-height: 1.62;
+  /* Arabic: never letter-space (brand guide 5.4) */
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading), var(--font-body), sans-serif;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+/* All numbers: balances, multipliers, hashes (spec 23.4) */
+.num {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.btn-primary {
+  background: var(--signal);
+  color: var(--paper); /* never white on orange */
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 22px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary:focus-visible {
+  outline: 2px solid var(--signal-2);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

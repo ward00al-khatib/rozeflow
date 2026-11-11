@@ -61,6 +61,8 @@ export function DemoFairness({
         <button
           type="button"
           className="btn-secondary"
+          disabled={!!demo.open}
+          title={demo.open ? "أكمل الجولة المفتوحة أولاً" : undefined}
           onClick={() => {
             demo.rotateSeeds(nextClientSeed);
             setNextClientSeed("");

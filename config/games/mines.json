@@ -1,0 +1,22 @@
+{
+  "game_id": "mines",
+  "config_version": 1,
+  "ruleset_version": "1.0.0",
+  "units": "centi_points",
+  "stake_limits": { "min": 1000, "max": 100000 },
+  "rules": {
+    "tiles": 25,
+    "mines": { "min": 1, "max": 24 },
+    "derivation": "shuffle([0..24]); the first `mines` entries are the mine tiles",
+    "cashout_before_first_pick": false,
+    "auto_cashout": "when every safe tile is open, or when the next pick would pass max_multiplier"
+  },
+  "payout_model": {
+    "target_rtp_bp": 9900,
+    "multiplier_scale": 10000,
+    "multiplier_formula": "floor(target_rtp_bp * C(25, k) / C(25 - mines, k))",
+    "max_multiplier": 10000000,
+    "max_gross_payout": 100000000
+  },
+  "fairness": { "rng_algorithm_version": "1.0", "game_domain": "rozeflow:v1:mines" }
+}

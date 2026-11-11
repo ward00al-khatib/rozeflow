@@ -1,0 +1,117 @@
+.wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.wrap {
+  pointer-events: auto;
+  background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--paper) 55%, transparent), color-mix(in srgb, var(--paper) 85%, transparent));
+  animation: fade 0.25s ease;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 14px 26px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--sheet) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--win) 60%, var(--hair));
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--win) 12%, transparent), 0 20px 60px rgb(0 0 0 / 0.45);
+  animation: pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.title {
+  font-family: var(--font-heading), sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--win);
+}
+
+.amount {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.mult {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.big .title,
+.huge .title {
+  font-size: 26px;
+}
+
+.big .amount {
+  font-size: 44px;
+}
+
+.huge .amount {
+  font-size: 54px;
+}
+
+.huge .card {
+  border-color: var(--signal);
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--signal) 16%, transparent), 0 20px 80px rgb(0 0 0 / 0.5);
+}
+
+.huge .title {
+  color: var(--signal-ink);
+}
+
+.rays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+}
+
+.rays i {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--win);
+  transform: rotate(var(--a)) translateY(0);
+  animation: burst 1.1s cubic-bezier(0.1, 0.8, 0.3, 1) var(--d) both;
+}
+
+.huge .rays i:nth-child(3n) {
+  background: var(--signal);
+}
+
+.rays i:nth-child(2n) {
+  background: var(--ink);
+  width: 6px;
+  height: 6px;
+}
+
+@keyframes burst {
+  0% {
+    transform: rotate(var(--a)) translateY(0) scale(0.4);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(var(--a)) translateY(-190px) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}

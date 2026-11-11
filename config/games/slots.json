@@ -1,26 +1,95 @@
 {
   "game_id": "slots",
-  "config_version": 1,
-  "ruleset_version": "1.0.0",
+  "config_version": 2,
+  "ruleset_version": "2.0.0",
   "units": "centi_points",
-  "stake_limits": { "min": 1000, "max": 100000, "multiple_of": 5 },
+  "stake_limits": {
+    "min": 1000,
+    "max": 100000,
+    "multiple_of": 20
+  },
   "rules": {
-    "reels": 3,
-    "rows": 3,
-    "derivation": "one unbiased_integer(len(strip)) per reel = index of the top visible symbol; rows wrap around",
+    "reels": 5,
+    "rows": 5,
+    "derivation": "one unbiased_integer(len(strip)) per reel = index of the top visible symbol; rows wrap around. Free spins draw their stops from the same stream, five per spin, after the base spin.",
+    "symbols": {
+      "high": ["atom", "crystal", "flask", "planet", "bolt"],
+      "low": ["ring", "tri", "square", "diamond"],
+      "wild": "wild",
+      "scatter": "scatter"
+    },
+    "wild_substitutes": "every symbol except scatter; appears on reels 2-4 only",
     "strips": [
-      ["cherry", "gem", "star", "cherry", "bell", "gem", "cherry", "bar", "star", "gem", "cherry", "seven", "gem", "cherry", "star", "bell", "cherry", "gem", "bar", "cherry", "star", "gem", "bell", "cherry"],
-      ["cherry", "gem", "star", "cherry", "bell", "gem", "cherry", "bar", "star", "gem", "cherry", "seven", "gem", "cherry", "star", "bell", "cherry", "gem", "bar", "cherry", "star", "gem", "bell", "cherry"],
-      ["cherry", "gem", "star", "cherry", "bell", "gem", "cherry", "bar", "star", "gem", "cherry", "seven", "gem", "cherry", "star", "bell", "cherry", "gem", "bar", "cherry", "star", "gem", "bell", "cherry"]
+      ["planet", "ring", "diamond", "planet", "bolt", "crystal", "ring", "square", "diamond", "square", "tri", "diamond", "square", "diamond", "flask", "diamond", "bolt", "bolt", "atom", "bolt", "flask", "diamond", "ring", "tri", "square", "planet", "diamond", "tri", "bolt", "ring", "tri", "planet", "tri", "scatter", "square", "square", "flask", "crystal", "crystal", "square", "atom", "diamond", "square", "flask", "ring", "tri", "diamond", "ring", "diamond", "tri"],
+      ["square", "tri", "wild", "square", "tri", "flask", "tri", "ring", "diamond", "wild", "bolt", "square", "crystal", "ring", "wild", "bolt", "ring", "square", "planet", "wild", "bolt", "diamond", "wild", "bolt", "ring", "diamond", "scatter", "tri", "flask", "flask", "planet", "diamond", "atom", "atom", "diamond", "diamond", "ring", "tri", "ring", "square", "flask", "wild", "planet", "bolt", "crystal", "crystal", "planet", "tri", "square", "planet"],
+      ["bolt", "wild", "atom", "flask", "bolt", "planet", "bolt", "crystal", "wild", "tri", "square", "bolt", "wild", "bolt", "planet", "planet", "wild", "atom", "flask", "diamond", "square", "ring", "tri", "tri", "wild", "flask", "crystal", "tri", "crystal", "ring", "flask", "tri", "square", "square", "planet", "scatter", "ring", "square", "diamond", "wild", "diamond", "planet", "ring", "square", "diamond", "diamond", "ring", "wild", "ring", "tri"],
+      ["scatter", "square", "tri", "planet", "wild", "diamond", "square", "diamond", "diamond", "tri", "ring", "tri", "planet", "ring", "tri", "ring", "flask", "square", "diamond", "wild", "tri", "planet", "ring", "crystal", "bolt", "planet", "bolt", "wild", "crystal", "crystal", "wild", "ring", "square", "ring", "wild", "flask", "diamond", "square", "bolt", "square", "bolt", "flask", "planet", "flask", "atom", "wild", "diamond", "tri", "bolt", "atom"],
+      ["square", "tri", "diamond", "ring", "diamond", "flask", "scatter", "square", "atom", "diamond", "atom", "planet", "diamond", "bolt", "square", "crystal", "square", "bolt", "crystal", "square", "diamond", "bolt", "crystal", "diamond", "ring", "diamond", "planet", "ring", "ring", "tri", "square", "diamond", "square", "flask", "diamond", "square", "tri", "planet", "tri", "bolt", "diamond", "ring", "tri", "flask", "tri", "planet", "ring", "flask", "bolt", "tri"]
     ],
-    "lines": [[1, 1, 1], [0, 0, 0], [2, 2, 2], [0, 1, 2], [2, 1, 0]]
+    "lines": [
+      [0, 0, 0, 0, 0],
+      [1, 1, 1, 1, 1],
+      [2, 2, 2, 2, 2],
+      [3, 3, 3, 3, 3],
+      [4, 4, 4, 4, 4],
+      [0, 1, 2, 1, 0],
+      [4, 3, 2, 3, 4],
+      [1, 2, 3, 2, 1],
+      [3, 2, 1, 2, 3],
+      [0, 1, 0, 1, 0],
+      [4, 3, 4, 3, 4],
+      [1, 0, 1, 0, 1],
+      [3, 4, 3, 4, 3],
+      [2, 1, 2, 1, 2],
+      [2, 3, 2, 3, 2],
+      [0, 1, 2, 3, 4],
+      [4, 3, 2, 1, 0],
+      [1, 2, 1, 2, 1],
+      [3, 2, 3, 2, 3],
+      [2, 1, 0, 1, 2]
+    ],
+    "line_rule": "left to right from reel 1, three or more of the same symbol (or wild) in a row; one win per line",
+    "free_spins": {
+      "scatters_to_spins": {
+        "3": 10,
+        "4": 15,
+        "5": 20
+      },
+      "win_multiplier": 3,
+      "retrigger": false,
+      "same_strips": true
+    },
+    "buy_feature": {
+      "price_multiplier": 24,
+      "spins": 10
+    }
   },
   "payout_model": {
-    "line_bet": "stake / 5 (all five lines always play)",
-    "three_of_a_kind": { "seven": 400, "bar": 100, "bell": 40, "star": 20, "gem": 11, "cherry": 6 },
-    "two_cherries_left": 4,
-    "declared_rtp": "0.947917 (full enumeration of 24^3 stops, see PAR sheet test)",
-    "max_gross_payout": 8340000
+    "line_bet": "stake / 20 (all twenty lines always play)",
+    "pays": {
+      "atom": [50, 250, 1000],
+      "crystal": [30, 100, 400],
+      "flask": [20, 60, 200],
+      "planet": [15, 50, 150],
+      "bolt": [10, 30, 100],
+      "ring": [5, 15, 30],
+      "tri": [5, 15, 30],
+      "square": [4, 10, 30],
+      "diamond": [4, 10, 30]
+    },
+    "pays_note": "line bets for 3, 4 and 5 of a kind",
+    "declared_rtp": "0.955899 (exact 149359240023/156250000000, see slots.test.ts and scripts/slots_par.py)",
+    "declared_buy_rtp": "0.945424",
+    "par": {
+      "base_hit_frequency": 0.557144,
+      "base_max_line_bet_units": 2060,
+      "volatility_sd_per_round": 3.16,
+      "free_spins_one_in": 116.8
+    },
+    "max_gross_payout": 628300000
   },
-  "fairness": { "rng_algorithm_version": "1.0", "game_domain": "rozeflow:v1:slots" }
+  "fairness": {
+    "rng_algorithm_version": "1.0",
+    "game_domain": "rozeflow:v1:slots"
+  }
 }

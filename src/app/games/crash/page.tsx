@@ -6,7 +6,12 @@ import { BarStatus, ControlBar, type PrimaryAction } from "@/components/game/Con
 import { GameFrame, ResultStrip } from "@/components/game/GameFrame";
 import { WinBanner } from "@/components/game/WinBanner";
 import ui from "@/components/game/stage.module.css";
+import { RtpHistory } from "@/components/RtpHistory";
 import { useDemoSession, type DemoRound, type OpenRound } from "@/lib/demo/session";
+import { useServerCrash } from "@/lib/server/games";
+import { fmtRtp, useLiveConfig } from "@/lib/server/gameConfig";
+import type { RoundView, ServerRound } from "@/lib/server/rounds";
+import { useMember } from "@/lib/useMember";
 import {
   CRASH_CONFIG,
   crashPoint,
@@ -31,8 +36,20 @@ interface FlightState {
 
 type Round = DemoRound<CrashBet, CrashOutcome>;
 
+/** How often a real flight asks the server where it stands (the crash point is known only there). */
+const POLL_MS = 300;
+
 export default function CrashPage() {
   const demo = useDemoSession();
+  const member = useMember();
+  // Members play on the server with the real wallet; visitors play the demo in the browser.
+  const real = member.status === "member";
+  const server = useServerCrash(member.status === "member" ? member.profile.user_id : null);
+  const { config, refresh: refreshConfig } = useLiveConfig("crash", CRASH_CONFIG);
+  const rtpBp = config.payout_model.target_rtp_bp;
+  const ready = member.status !== "loading" && (real ? server.ready : demo.ready);
+  const [serverOpen, setServerOpen] = useState<OpenRound<CrashBet, FlightState> | null>(null);
+  const [waiting, setWaiting] = useState(false);
   const [stake, setStake] = useState(1000);
   const [autoText, setAutoText] = useState("2.00");
   const [error, setError] = useState<string | null>(null);
@@ -40,33 +57,107 @@ export default function CrashPage() {
   const [last, setLast] = useState<Round | null>(null);
   const settling = useRef(false);
   const lastTick = useRef(0);
+  const asking = useRef(false); // a request about the real flight is on its way
+  const lastAsk = useRef(0);
+  const pendingCash = useRef(false); // cash-out pressed while another request was on its way
+  const landed = useRef<((net: number | null) => void) | null>(null); // autoplay waits here for a real flight to end
 
   const { min, max } = CRASH_CONFIG.stake_limits;
   const autoLimits = CRASH_CONFIG.rules.auto_cashout;
   const autoCashout = Math.round(Number(autoText) * 100);
   const autoValid = Number.isInteger(autoCashout) && autoCashout >= autoLimits.min && autoCashout <= autoLimits.max;
 
-  const open = demo.open?.game === "crash" ? (demo.open as OpenRound<CrashBet, FlightState>) : null;
+  const open = real ? serverOpen : demo.open?.game === "crash" ? (demo.open as OpenRound<CrashBet, FlightState>) : null;
   const flying = open !== null;
 
   // Crash point of the open round. Demo mode only: on the server it stays secret until the round ends.
-  const crash = open ? crashPoint(demo.openSeeds()) : null;
+  const crash = open && !real ? crashPoint(demo.openSeeds(), rtpBp) : null;
   const elapsed = open ? Math.max(0, now - open.state.startedAt) : 0;
-  const live = open ? Math.min(multiplierAt(elapsed), crash!) : null;
+  // A real flight never shows more than its automatic target: the server pays exactly that once it is reached.
+  const live = open ? Math.min(multiplierAt(elapsed), crash ?? open.bet.autoCashout) : null;
 
   const finishRound = useCallback(
     (manualAt: number | null) => {
       if (!open || settling.current) return;
       settling.current = true;
-      const outcome = settleCrash(open.bet, crashPoint(demo.openSeeds()), manualAt);
+      const outcome = settleCrash(open.bet, crashPoint(demo.openSeeds(), rtpBp), manualAt);
       demo.finish(outcome, outcome.gross);
       playSound(outcome.cashedAt ? "cashout" : "lose");
       const { state: _s, ...rest } = open;
       void _s;
       setLast({ ...rest, outcome, gross: outcome.gross });
     },
-    [open, demo],
+    [open, demo, rtpBp],
   );
+
+  /** A real flight as the page tracks it. The clock starts at the server's start, as seen from this browser. */
+  const toFlight = useCallback(
+    (view: RoundView, startedAt: number): OpenRound<CrashBet, FlightState> => ({
+      game: "crash",
+      nonce: Number(view.nonce),
+      serverSeedHash: view.server_seed_hash,
+      clientSeed: view.client_seed,
+      bet: { stake: Number(view.stake), autoCashout: Number(view.auto_cashout) },
+      stake: Number(view.stake),
+      state: { startedAt },
+      at: startedAt,
+    }),
+    [],
+  );
+
+  const { call, resume } = server;
+  /** Asks the server where the real flight stands; `cash` is the player's cash-out press. */
+  const ask = useCallback(
+    (cash: boolean) => {
+      if (asking.current) {
+        // Never drop a cash-out press: it goes out as soon as the current request returns.
+        if (cash) pendingCash.current = true;
+        return;
+      }
+      asking.current = true;
+      let ended = false;
+      call("crash_step", { p_cash: cash }, false)
+        .then(({ round }) => {
+          if (!round) return;
+          ended = true;
+          playSound(round.outcome.cashedAt ? "cashout" : "lose");
+          setServerOpen(null);
+          setLast(round);
+          landed.current?.(round.gross - round.stake);
+          landed.current = null;
+        })
+        .catch(() =>
+          // The answer may have been lost, or the flight was settled elsewhere: ask where things stand.
+          resume().then(
+            (view) => {
+              if (view) return;
+              setServerOpen(null);
+              landed.current?.(null);
+              landed.current = null;
+            },
+            () => undefined,
+          ),
+        )
+        .finally(() => {
+          asking.current = false;
+          const again = pendingCash.current && !ended;
+          pendingCash.current = false;
+          if (again) askRef.current(true);
+        });
+    },
+    [call, resume],
+  );
+  const askRef = useRef(ask);
+  askRef.current = ask;
+
+  // A reload in the middle of a real flight picks it up again.
+  useEffect(() => {
+    if (!real || !server.ready) return;
+    void resume().then(
+      (view) => view && setServerOpen(toFlight(view, Date.now() - Number(view.elapsed_ms))),
+      () => undefined,
+    );
+  }, [real, server.ready, resume, toFlight]);
 
   // Animation clock; settle automatically on auto cash-out or crash.
   useEffect(() => {
@@ -84,7 +175,13 @@ export default function CrashPage() {
         lastTick.current = Math.floor(m / 10);
         playSound("tick");
       }
-      if (m >= open.bet.autoCashout || m >= crash!) {
+      if (real) {
+        // The effect restarts on every frame, so the time of the last question lives in a ref.
+        if (t - lastAsk.current >= POLL_MS) {
+          lastAsk.current = t;
+          ask(false);
+        }
+      } else if (m >= open.bet.autoCashout || m >= crash!) {
         finishRound(null);
         return;
       }
@@ -92,15 +189,45 @@ export default function CrashPage() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [open, crash, finishRound]);
+  }, [open, crash, finishRound, real, ask]);
 
   /** Starts a flight. Returns its net for autoplay (no manual cash-out during autoplay), or null. */
-  function start(): number | null {
+  function start(): number | null | Promise<number | null> {
     setError(null);
     const bet: CrashBet = { stake, autoCashout };
     try {
       validateCrashBet(bet);
-      const net = settleCrash(bet, crashPoint(demo.nextSeeds()), null).gross - stake;
+      if (real) {
+        if (stake > server.balance) throw new Error("رصيدك لا يكفي لهذه الجولة.");
+        const sent = Date.now();
+        setWaiting(true);
+        return call("crash_start", { p_stake: bet.stake, p_auto_cashout: bet.autoCashout }, true).then(
+          ({ view, round }) => {
+            setWaiting(false);
+            if (round) {
+              // Answer to a repeated request for a flight that already ended.
+              setLast(round);
+              return round.gross - round.stake;
+            }
+            // The server started its clock while the request was on its way: split the round trip.
+            const startedAt = sent + (Date.now() - sent) / 2 - Number(view.elapsed_ms ?? 0);
+            lastTick.current = 10;
+            playSound("start");
+            if (view.rtp_bp !== rtpBp) refreshConfig();
+            setLast(null);
+            setServerOpen(toFlight(view, startedAt));
+            return new Promise<number | null>((resolve) => {
+              landed.current = resolve;
+            });
+          },
+          (e) => {
+            setWaiting(false);
+            setError(e instanceof Error ? e.message : "تعذّر البدء.");
+            return null;
+          },
+        );
+      }
+      const net = settleCrash(bet, crashPoint(demo.nextSeeds(), rtpBp), null).gross - stake;
       demo.begin<CrashBet, FlightState>("crash", bet, bet.stake, { startedAt: Date.now() });
       lastTick.current = 10;
       playSound("start");
@@ -113,17 +240,18 @@ export default function CrashPage() {
 
   function cashOut() {
     if (!open) return;
-    finishRound(multiplierAt(Date.now() - open.state.startedAt));
+    if (real) ask(true);
+    else finishRound(multiplierAt(Date.now() - open.state.startedAt));
   }
 
-  const autoplay = useAutoPlay(start, flying, 900);
-  const locked = flying || autoplay.running;
+  const autoplay = useAutoPlay(start, flying || waiting, 900);
+  const locked = flying || waiting || autoplay.running;
 
   const primary: PrimaryAction = autoplay.running
     ? { kind: "stop", label: "إيقاف", onClick: autoplay.stop }
     : flying
       ? { kind: "cash", label: "حصّل", sub: formatPoints(Math.floor((open!.bet.stake * live!) / 100)), onClick: cashOut }
-      : { kind: "play", label: "انطلق", onClick: () => start(), disabled: !demo.ready || !autoValid };
+      : { kind: "play", label: "انطلق", onClick: () => start(), disabled: !ready || !autoValid || waiting, busy: waiting };
   useSpaceKey(() => !primary.disabled && primary.onClick(), true);
 
   // Curve: x = time, y = multiplier (smooth, unfloored), scaled to fill the stage.
@@ -147,7 +275,8 @@ export default function CrashPage() {
 
   const crashed = !flying && last !== null;
   const won = crashed && last!.outcome.cashedAt !== null;
-  const rounds = useMemo(() => demo.rounds.filter((r): r is Round => r.game === "crash"), [demo.rounds]);
+  const allRounds = real ? server.rounds : demo.rounds;
+  const rounds = useMemo(() => allRounds.filter((r): r is Round => r.game === "crash"), [allRounds]);
 
   const stage = (
     <>
@@ -247,7 +376,7 @@ export default function CrashPage() {
         </div>
         <div className={ui.group}>
           <span className={ui.groupLabel}>فرصة الوصول</span>
-          <span className="num">{autoValid ? (9900 / autoCashout).toFixed(2) + "%" : "—"}</span>
+          <span className="num">{autoValid ? (rtpBp / autoCashout).toFixed(2) + "%" : "—"}</span>
         </div>
       </div>
     </>
@@ -255,10 +384,11 @@ export default function CrashPage() {
 
   const panel = (
     <ControlBar
-      balance={demo.balance}
+      balance={real ? server.balance : demo.balance}
+      balanceLabel={real ? "رصيدك" : undefined}
       status={
-        error ? (
-          <span className="error">{error}</span>
+        error || (real && server.loadError) ? (
+          <span className="error">{error ?? server.loadError}</span>
         ) : flying ? (
           <BarStatus win={Math.floor((open!.bet.stake * live!) / 100)} label="قيمة التحصيل" />
         ) : (
@@ -290,7 +420,7 @@ export default function CrashPage() {
         net: autoplay.net,
         onStart: autoplay.start,
         onStop: autoplay.stop,
-        disabled: !demo.ready || flying || !autoValid,
+        disabled: !ready || flying || waiting || !autoValid,
       }}
       primary={primary}
     />
@@ -300,6 +430,7 @@ export default function CrashPage() {
     <GameFrame
       title="كراش"
       tint="#ff8a1f"
+      real={real}
       onReset={demo.reset}
       resetDisabled={locked}
       stage={stage}
@@ -311,12 +442,13 @@ export default function CrashPage() {
             الدخول مضروبة بالمضاعف.
           </p>
           <p>
-            حدّد هدف التحصيل التلقائي، وستُحصَّل الجولة وحدها عند بلوغه. فرصة الوصول إلى أي هدف = <span className="num">99 ÷ الهدف</span>، فمثلاً
-            فرصة <span className="num">2×</span> هي <span className="num">49.5%</span>، والعائد النظري <span className="num">99%</span>. أعلى
+            حدّد هدف التحصيل التلقائي، وستُحصَّل الجولة وحدها عند بلوغه. فرصة الوصول إلى أي هدف = <span className="num">{fmtRtp(rtpBp)} ÷ الهدف</span>، فمثلاً
+            فرصة <span className="num">2×</span> هي <span className="num">{fmtRtp(rtpBp / 2)}%</span>، والعائد النظري <span className="num">{fmtRtp(rtpBp)}%</span> لكل اللاعبين. أعلى
             مضاعف <span className="num">1,000×</span>.
           </p>
           <p>في اللعب التلقائي تُلعب جولات متتالية بنفس الهدف، والتحصيل فيها تلقائي فقط.</p>
           <p>كل نقطة انهيار تُحسب من بذور معلنة مسبقاً، ويمكنك التحقق منها في قسم «العدالة» أسفل الصفحة.</p>
+          <RtpHistory gameId="crash" />
         </>
       }
       below={
@@ -353,7 +485,11 @@ export default function CrashPage() {
               </table>
             )}
           </section>
-          <DemoFairness demo={demo} game="crash" verify={(seeds) => `نقطة الانهيار ${fmt(crashPoint(seeds))}`} />
+          <DemoFairness
+            demo={real ? { ...server, open: serverOpen } : demo}
+            game="crash"
+            verify={(seeds, round) => `نقطة الانهيار ${fmt(crashPoint(seeds, (round as ServerRound<CrashBet, CrashOutcome>).rtpBp ?? rtpBp))}`}
+          />
         </>
       }
     />

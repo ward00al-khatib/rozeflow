@@ -1,12 +1,17 @@
 "use client";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { DemoFairness } from "@/components/DemoFairness";
 import { useSpaceKey } from "@/components/game/BetControls";
 import { BarStatus, ControlBar, type PrimaryAction } from "@/components/game/ControlBar";
 import { GameFrame, ResultStrip } from "@/components/game/GameFrame";
 import { WinBanner } from "@/components/game/WinBanner";
 import ui from "@/components/game/stage.module.css";
+import { RtpHistory } from "@/components/RtpHistory";
 import { useDemoSession, type DemoRound, type OpenRound } from "@/lib/demo/session";
+import { useServerMines } from "@/lib/server/games";
+import { fmtRtp, useLiveConfig } from "@/lib/server/gameConfig";
+import type { RoundView, ServerRound } from "@/lib/server/rounds";
+import { useMember } from "@/lib/useMember";
 import {
   MINES_CONFIG,
   MINES_SCALE,
@@ -69,6 +74,15 @@ function Mine() {
 
 export default function MinesPage() {
   const demo = useDemoSession();
+  const member = useMember();
+  // Members play on the server with the real wallet; visitors play the demo in the browser.
+  const real = member.status === "member";
+  const server = useServerMines(member.status === "member" ? member.profile.user_id : null);
+  const { config, refresh: refreshConfig } = useLiveConfig("mines", MINES_CONFIG);
+  const liveRtp = config.payout_model.target_rtp_bp;
+  const ready = member.status !== "loading" && (real ? server.ready : demo.ready);
+  const [serverOpen, setServerOpen] = useState<RoundView | null>(null); // the open round as the server reports it
+  const [waiting, setWaiting] = useState(false);
   const [mines, setMines] = useState(3);
   const [stake, setStake] = useState(1000);
   const [turbo, setTurbo] = useState(false);
@@ -77,24 +91,73 @@ export default function MinesPage() {
 
   const { min: minMines, max: maxMines } = MINES_CONFIG.rules.mines;
   const { min, max } = MINES_CONFIG.stake_limits;
-  const open = demo.open?.game === "mines" ? (demo.open as OpenRound<MinesBet, MinesState>) : null;
+  const open: OpenRound<MinesBet, MinesState> | null = real
+    ? serverOpen && {
+        game: "mines",
+        nonce: Number(serverOpen.nonce),
+        serverSeedHash: serverOpen.server_seed_hash,
+        clientSeed: serverOpen.client_seed,
+        bet: { stake: Number(serverOpen.stake), mines: Number(serverOpen.mines_count) },
+        stake: Number(serverOpen.stake),
+        state: { picks: (serverOpen.picks as number[]) ?? [], status: "playing" },
+        at: 0,
+      }
+    : demo.open?.game === "mines"
+      ? (demo.open as OpenRound<MinesBet, MinesState>)
+      : null;
+  // An open round keeps the RTP it started with, even if the owner changes it meanwhile.
+  const rtpBp = real && serverOpen?.rtp_bp ? serverOpen.rtp_bp : liveRtp;
   const playing = open !== null;
   const bet = open?.bet ?? { stake, mines };
   const picks = open?.state.picks ?? [];
   const k = picks.length;
-  const limit = maxPicks(bet.mines);
-  const current = k > 0 ? minesMultiplier(bet.mines, k) : null;
-  const next = k < limit ? minesMultiplier(bet.mines, k + 1) : null;
+  const limit = maxPicks(bet.mines, rtpBp);
+  const current = k > 0 ? minesMultiplier(bet.mines, k, rtpBp) : null;
+  const next = k < limit ? minesMultiplier(bet.mines, k + 1, rtpBp) : null;
   const cashValue = current ? Math.floor((bet.stake * current) / MINES_SCALE) : 0;
 
   // Mine tiles are known to this browser only in demo mode; on the server they stay hidden until the round ends.
   const shownOutcome = !playing ? last?.outcome : null;
+
+  // A reload in the middle of a real round picks it up again.
+  const resume = server.resume;
+  useEffect(() => {
+    if (real && server.ready) void resume().then(setServerOpen, () => undefined);
+  }, [real, server.ready, resume]);
+
+  /** One step of a real round: the server answers with the open round, or with the settled one. */
+  function step(rpc: string, args: Record<string, unknown>, keyed: boolean, sound: (r: Round | null) => void) {
+    if (waiting) return;
+    setWaiting(true);
+    setError(null);
+    server
+      .call(rpc, args, keyed)
+      .then(({ view, round }) => {
+        sound(round);
+        if (round) {
+          setServerOpen(null);
+          setLast(round);
+          refreshConfig();
+        } else setServerOpen(view);
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : "تعذّر الاتصال.");
+        // The answer may have been lost on the way: ask the server where the round stands.
+        void resume().then(setServerOpen, () => undefined);
+      })
+      .finally(() => setWaiting(false));
+  }
 
   function start() {
     setError(null);
     setLast(null);
     try {
       validateMinesBet(bet);
+      if (real) {
+        if (bet.stake > server.balance) throw new Error("رصيدك لا يكفي لهذه الجولة.");
+        step("mines_start", { p_stake: bet.stake, p_mines: bet.mines }, true, () => playSound("start"));
+        return;
+      }
       demo.begin<MinesBet, MinesState>("mines", bet, bet.stake, { picks: [], status: "playing" });
       playSound("start");
     } catch (e) {
@@ -103,7 +166,7 @@ export default function MinesPage() {
   }
 
   function settle(state: MinesState, round: OpenRound<MinesBet, MinesState>, mineTiles: number[]) {
-    const outcome = settleMines(state, mineTiles, round.bet);
+    const outcome = settleMines(state, mineTiles, round.bet, rtpBp);
     demo.finish(outcome, outcome.gross);
     const { state: _s, ...rest } = round;
     void _s;
@@ -112,10 +175,17 @@ export default function MinesPage() {
 
   function pick(tile: number) {
     if (!open) return;
+    if (real) {
+      if (picks.includes(tile)) return;
+      step("mines_pick", { p_tile: tile }, false, (r) =>
+        playSound(!r ? "pop" : r.outcome.status === "busted" ? "lose" : "cashout"),
+      );
+      return;
+    }
     setError(null);
     try {
       const mineTiles = minePositions(demo.openSeeds(), open.bet.mines);
-      const s = applyPick(open.state, tile, mineTiles, open.bet);
+      const s = applyPick(open.state, tile, mineTiles, open.bet, rtpBp);
       if (s.status === "busted") playSound("lose");
       else if (s.status === "cashed") playSound("cashout");
       else playSound("pop");
@@ -133,6 +203,10 @@ export default function MinesPage() {
 
   function cashOut() {
     if (!open || k === 0) return;
+    if (real) {
+      step("mines_cashout", {}, false, () => playSound("cashout"));
+      return;
+    }
     try {
       const mineTiles = minePositions(demo.openSeeds(), open.bet.mines);
       playSound("cashout");
@@ -143,11 +217,12 @@ export default function MinesPage() {
   }
 
   const primary: PrimaryAction = !playing
-    ? { kind: "play", label: "ابدأ الجولة", onClick: start, disabled: !demo.ready }
-    : { kind: "cash", label: k === 0 ? "اكشف خانة" : "حصّل", sub: k === 0 ? undefined : formatPoints(cashValue), onClick: cashOut, disabled: k === 0 };
+    ? { kind: "play", label: "ابدأ الجولة", onClick: start, disabled: !ready || waiting, busy: waiting }
+    : { kind: "cash", label: k === 0 ? "اكشف خانة" : "حصّل", sub: k === 0 ? undefined : formatPoints(cashValue), onClick: cashOut, disabled: k === 0 || waiting };
   useSpaceKey(() => !primary.disabled && primary.onClick(), true);
 
-  const rounds = useMemo(() => demo.rounds.filter((r): r is Round => r.game === "mines"), [demo.rounds]);
+  const allRounds = real ? server.rounds : demo.rounds;
+  const rounds = useMemo(() => allRounds.filter((r): r is Round => r.game === "mines"), [allRounds]);
   const setMinesSafe = (m: number) => {
     playSound("click");
     setMines(Math.min(maxMines, Math.max(minMines, m)));
@@ -195,8 +270,8 @@ export default function MinesPage() {
             )
           ) : (
             <span className="muted">
-              أول خانة <span className="num">{fmtMult(minesMultiplier(mines, 1))}</span> · الأقصى{" "}
-              <span className="num">{fmtMult(minesMultiplier(mines, maxPicks(mines)))}</span>
+              أول خانة <span className="num">{fmtMult(minesMultiplier(mines, 1, rtpBp))}</span> · الأقصى{" "}
+              <span className="num">{fmtMult(minesMultiplier(mines, maxPicks(mines, rtpBp), rtpBp))}</span>
             </span>
           )}
         </div>
@@ -267,10 +342,11 @@ export default function MinesPage() {
 
   const panel = (
     <ControlBar
-      balance={demo.balance}
+      balance={real ? server.balance : demo.balance}
+      balanceLabel={real ? "رصيدك" : undefined}
       status={
-        error ? (
-          <span className="error">{error}</span>
+        error || (real && server.loadError) ? (
+          <span className="error">{error ?? server.loadError}</span>
         ) : playing ? (
           <BarStatus win={cashValue || null} label="قيمة التحصيل" hint="اكشف خانة آمنة" />
         ) : (
@@ -312,6 +388,7 @@ export default function MinesPage() {
     <GameFrame
       title="الألغام"
       tint="#3ecf8e"
+      real={real}
       onReset={demo.reset}
       resetDisabled={playing}
       stage={stage}
@@ -323,10 +400,11 @@ export default function MinesPage() {
             <span className="num">{maxMines}</span>). كل خانة آمنة تكشفها ترفع المضاعف، ويمكنك التحصيل في أي وقت. إن كشفت لغماً تنتهي الجولة.
           </p>
           <p>
-            المضاعف محسوب من الاحتمال الحقيقي للوصول إلى تلك الخانة، والعائد النظري لأي نقطة توقف <span className="num">99%</span>. أعلى
+            المضاعف محسوب من الاحتمال الحقيقي للوصول إلى تلك الخانة، والعائد النظري لأي نقطة توقف <span className="num">{fmtRtp(liveRtp)}%</span> لكل اللاعبين. أعلى
             مضاعف <span className="num">1,000×</span>.
           </p>
           <p>زر «عشوائي» يكشف خانة لم تُكشف بعد. مواقع الألغام تُحدَّد من البذور قبل أول اختيار ويمكنك التحقق منها بعد الجولة.</p>
+          <RtpHistory gameId="mines" />
         </>
       }
       below={
@@ -364,11 +442,11 @@ export default function MinesPage() {
             )}
           </section>
           <DemoFairness
-            demo={demo}
+            demo={real ? { ...server, open: serverOpen } : demo}
             game="mines"
             verify={(seeds, round) => {
               const r = round as Round;
-              const o = replayMines(seeds, r.bet, r.outcome.picks);
+              const o = replayMines(seeds, r.bet, r.outcome.picks, (r as ServerRound<MinesBet, MinesOutcome>).rtpBp ?? liveRtp);
               return `الألغام في الخانات ${o.mines.map((t) => t + 1).join("، ")} ← ${o.status === "cashed" ? fmtMult(o.multiplier) : "لغم"}`;
             }}
           />

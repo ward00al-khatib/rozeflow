@@ -42,8 +42,10 @@ export function crashPointFromInteger(x: bigint, rtpBp = crashConfig.payout_mode
   return Math.max(100, Number(capped));
 }
 
-export function crashPoint(seeds: { serverSeedHex: string; clientSeed: string; nonce: number }): number {
-  return crashPointFromInteger(unitInteger(new RandomStream({ ...seeds, domain: gameDomain("crash") })));
+export const CRASH_RTP_BP = crashConfig.payout_model.target_rtp_bp;
+
+export function crashPoint(seeds: { serverSeedHex: string; clientSeed: string; nonce: number }, rtpBp: number = CRASH_RTP_BP): number {
+  return crashPointFromInteger(unitInteger(new RandomStream({ ...seeds, domain: gameDomain("crash") })), rtpBp);
 }
 
 export function validateCrashBet(bet: CrashBet): void {

@@ -19,6 +19,7 @@
   "payout_model": {
     "multiplier_scale": 10000,
     "target_rtp_bp": 9900,
+    "table_rtp_bp": 9900,
     "note": "multipliers per (risk, rows), slot 0 = far left; exact RTP of every table is within 0.01% of 99% (tests)",
     "multipliers": {
       "low": {

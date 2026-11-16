@@ -7,6 +7,8 @@ import { GameFrame, ResultStrip } from "@/components/game/GameFrame";
 import { WinBanner } from "@/components/game/WinBanner";
 import ui from "@/components/game/stage.module.css";
 import { useDemoSession, type DemoRound } from "@/lib/demo/session";
+import { useServerRoulette } from "@/lib/server/games";
+import { useMember } from "@/lib/useMember";
 import {
   ROULETTE_CONFIG,
   betKey,
@@ -71,6 +73,12 @@ function pocketClass(n: number) {
 
 export default function RoulettePage() {
   const demo = useDemoSession();
+  const member = useMember();
+  // Members play on the server with the real wallet; visitors play the demo in the browser.
+  const real = member.status === "member";
+  const server = useServerRoulette(member.status === "member" ? member.profile.user_id : null);
+  const ready = member.status !== "loading" && (real ? server.ready : demo.ready);
+  const [waiting, setWaiting] = useState(false); // sent to the server, answer not here yet
   const [chip, setChip] = useState(1000);
   const [bets, setBets] = useState<RouletteBet[]>([]);
   const [last, setLast] = useState<Round | null>(null);
@@ -92,7 +100,7 @@ export default function RoulettePage() {
   }, [shown]);
 
   function place(spot: Spot) {
-    if (spinning || autoplay.running) return;
+    if (busy || autoplay.running) return;
     setError(null);
     playSound("pop");
     setBets((prev) => {
@@ -103,19 +111,37 @@ export default function RoulettePage() {
     });
   }
 
-  function spinOnce(): number | null {
+  function fail(e: unknown): null {
+    setWaiting(false);
+    setError(e instanceof Error ? e.message : "تعذّر اللعب.");
+    return null;
+  }
+
+  function spinOnce(): number | null | Promise<number | null> {
     setError(null);
-    let round: Round;
     try {
       validateBets(bets);
-      round = demo.play("roulette", bets, total, (seeds) => {
-        const outcome = playRoulette(seeds, bets);
-        return { outcome, gross: outcome.gross };
-      });
+      if (real) {
+        if (total > server.balance) throw new Error("رصيدك لا يكفي لهذه الجولة.");
+        setWaiting(true);
+        return server.play(bets).then((round) => {
+          setWaiting(false);
+          return animate(round);
+        }, fail);
+      }
+      return animate(
+        demo.play("roulette", bets, total, (seeds) => {
+          const outcome = playRoulette(seeds, bets);
+          return { outcome, gross: outcome.gross };
+        }),
+      );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "تعذّر اللعب.");
-      return null;
+      return fail(e);
     }
+  }
+
+  /** Rolls the wheel to the round's pocket; returns the round's net. */
+  function animate(round: Round): number {
     const pos = WHEEL.indexOf(round.outcome.pocket);
     const from = WHEEL.indexOf(last?.outcome.pocket ?? 0);
     const dur = turbo ? TURBO_MS : SPIN_MS;
@@ -135,11 +161,13 @@ export default function RoulettePage() {
     return round.gross - round.stake;
   }
 
-  const autoplay = useAutoPlay(spinOnce, spinning, turbo ? 200 : 600);
-  const locked = spinning || autoplay.running;
-  useSpaceKey(() => !locked && demo.ready && bets.length > 0 && spinOnce(), true);
+  const busy = spinning || waiting;
+  const autoplay = useAutoPlay(spinOnce, busy, turbo ? 200 : 600);
+  const locked = busy || autoplay.running;
+  useSpaceKey(() => !locked && ready && bets.length > 0 && spinOnce(), true);
 
-  const rounds = useMemo(() => demo.rounds.filter((r): r is Round => r.game === "roulette"), [demo.rounds]);
+  const allRounds = real ? server.rounds : demo.rounds;
+  const rounds = useMemo(() => allRounds.filter((r): r is Round => r.game === "roulette"), [allRounds]);
 
   function Cell({ spot, className, pos }: { spot: Spot; className?: string; pos?: CSSProperties }) {
     const k = betKey(spot);
@@ -282,10 +310,11 @@ export default function RoulettePage() {
 
   const panel = (
     <ControlBar
-      balance={demo.balance}
+      balance={real ? server.balance : demo.balance}
+      balanceLabel={real ? "رصيدك" : undefined}
       status={
-        error ? (
-          <span className="error">{error}</span>
+        error || (real && server.loadError) ? (
+          <span className="error">{error ?? server.loadError}</span>
         ) : (
           <BarStatus win={shown && shown.gross > 0 ? shown.gross : null} hint={bets.length ? "الرهانات تبقى بعد الدوران" : "اختر الفيشة ثم اضغط على الطاولة"} />
         )
@@ -304,12 +333,12 @@ export default function RoulettePage() {
         net: autoplay.net,
         onStart: autoplay.start,
         onStop: autoplay.stop,
-        disabled: !demo.ready || spinning || !bets.length,
+        disabled: !ready || busy || !bets.length,
       }}
       primary={
         autoplay.running
           ? { kind: "stop", label: "إيقاف", onClick: autoplay.stop }
-          : { kind: "play", label: "أدِر العجلة", onClick: () => spinOnce(), disabled: !demo.ready || spinning || !bets.length, busy: spinning }
+          : { kind: "play", label: "أدِر العجلة", onClick: () => spinOnce(), disabled: !ready || busy || !bets.length, busy }
       }
     />
   );
@@ -318,6 +347,7 @@ export default function RoulettePage() {
     <GameFrame
       title="الروليت"
       tint="#b9405a"
+      real={real}
       onReset={demo.reset}
       resetDisabled={locked}
       stage={stage}
@@ -331,7 +361,7 @@ export default function RoulettePage() {
           <p>
             الرقم المفرد يدفع <span className="num">36×</span>، والعشرات والأعمدة <span className="num">3×</span>، والأحمر والأسود والزوجي والفردي
             والنصفان <span className="num">2×</span> (شاملة قيمة الدخول). كل الأنواع لها العائد النظري نفسه:{" "}
-            <span className="num">36/37 ≈ 97.30%</span>.
+            <span className="num">36/37 ≈ 97.30%</span>، وهو ثابت ببنية العجلة نفسها.
           </p>
           <p>
             مجموع الرهانات في الجولة بين <span className="num">{ROULETTE_CONFIG.stake_limits.min / 100}</span> و
@@ -377,7 +407,7 @@ export default function RoulettePage() {
             )}
           </section>
           <DemoFairness
-            demo={demo}
+            demo={real ? server : demo}
             game="roulette"
             verify={(seeds, round) => {
               const o = playRoulette(seeds, round.bet as RouletteBet[]);

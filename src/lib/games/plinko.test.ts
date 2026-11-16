@@ -57,3 +57,25 @@ describe("playPlinko", () => {
     expect(Math.abs(paid / (n * bet.stake) - 0.99)).toBeLessThan(0.006);
   });
 });
+
+describe("plinko at an owner-set RTP", () => {
+  it("scaled tables stay within 0.02% below the chosen RTP", () => {
+    const choose = (n: number, k: number) => {
+      let c = 1n;
+      for (let i = 0; i < k; i++) c = (c * BigInt(n - i)) / BigInt(i + 1);
+      return c;
+    };
+    for (const rtp of [9000, 9250, 9500, 9730, 9900]) {
+      for (const risk of ["low", "medium", "high"] as const) {
+        for (const rows of [8, 12, 16] as const) {
+          const t = plinkoTable(risk, rows, rtp);
+          let num = 0n;
+          t.forEach((m, k) => (num += choose(rows, k) * BigInt(m)));
+          const exact = Number(num) / (2 ** rows * PLINKO_SCALE);
+          expect(exact).toBeLessThanOrEqual(rtp / 10000 + 0.0001);
+          expect(exact).toBeGreaterThan(rtp / 10000 - 0.0002);
+        }
+      }
+    }
+  });
+});

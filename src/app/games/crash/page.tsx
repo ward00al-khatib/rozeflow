@@ -11,7 +11,7 @@ import { useDemoSession, type DemoRound, type OpenRound } from "@/lib/demo/sessi
 import { useServerCrash } from "@/lib/server/games";
 import { fmtRtp, useLiveConfig } from "@/lib/server/gameConfig";
 import type { RoundView, ServerRound } from "@/lib/server/rounds";
-import { useMember } from "@/lib/useMember";
+import { playsReal, useMember } from "@/lib/useMember";
 import {
   CRASH_CONFIG,
   crashPoint,
@@ -43,8 +43,8 @@ export default function CrashPage() {
   const demo = useDemoSession();
   const member = useMember();
   // Members play on the server with the real wallet; visitors play the demo in the browser.
-  const real = member.status === "member";
-  const server = useServerCrash(member.status === "member" ? member.profile.user_id : null);
+  const real = playsReal(member);
+  const server = useServerCrash(real ? member.profile.user_id : null);
   const { config, refresh: refreshConfig } = useLiveConfig("crash", CRASH_CONFIG);
   const rtpBp = config.payout_model.target_rtp_bp;
   const ready = member.status !== "loading" && (real ? server.ready : demo.ready);
@@ -431,6 +431,7 @@ export default function CrashPage() {
       title="كراش"
       tint="#ff8a1f"
       real={real}
+      device={member.status === "member" ? member.device : undefined}
       onReset={demo.reset}
       resetDisabled={locked}
       stage={stage}

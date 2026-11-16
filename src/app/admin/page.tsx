@@ -6,6 +6,7 @@ import { Card, Shell } from "@/components/Shell";
 import { formatPoints } from "@/lib/points";
 import { siteUrl, supabase } from "@/lib/supabase/client";
 import { useMember } from "@/lib/useMember";
+import { Devices } from "./Devices";
 import styles from "./admin.module.css";
 
 interface GameRow {
@@ -302,6 +303,8 @@ export default function AdminPage() {
         </ul>
         {gameMsg && <p className={gameMsg.ok ? "success" : "error"}>{gameMsg.text}</p>}
       </Card>
+
+      <Devices />
 
       <Card title="سجل تغييرات العائد">
         <RtpHistory reloadKey={logKey} />

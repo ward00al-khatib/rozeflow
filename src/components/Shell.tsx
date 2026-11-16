@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { supabase } from "@/lib/supabase/client";
 import type { MemberState } from "@/lib/useMember";
+import { DeviceNotice } from "./DeviceNotice";
 import styles from "./Shell.module.css";
 
 export function Shell({ member, children, wide }: { member: MemberState; children: ReactNode; wide?: boolean }) {
@@ -25,7 +26,10 @@ export function Shell({ member, children, wide }: { member: MemberState; childre
           )}
         </nav>
       </header>
-      <main className={`${styles.main} ${wide ? styles.wide : ""}`}>{children}</main>
+      <main className={`${styles.main} ${wide ? styles.wide : ""}`}>
+        <DeviceNotice member={member} />
+        {children}
+      </main>
     </div>
   );
 }

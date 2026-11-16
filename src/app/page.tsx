@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Ambient } from "@/components/fx/Ambient";
 import { GameCover, type GameId } from "@/components/lobby/Covers";
 import { useMember } from "@/lib/useMember";
+import { DeviceNotice } from "@/components/DeviceNotice";
 import styles from "./page.module.css";
 
 const GAMES: Array<{ id: GameId; name: string; tag: string; fact: [string, string]; wide?: boolean }> = [
@@ -64,6 +65,7 @@ export default function Home() {
           <span className={styles.flow}>FLOW</span>
         </h1>
         <p className={styles.lede}>ست ألعاب بنقاط افتراضية فقط، ونتائج يمكنك التحقق منها بنفسك.</p>
+        <DeviceNotice member={member} />
         {linkError && (
           <p className="error" role="alert">
             {linkError}

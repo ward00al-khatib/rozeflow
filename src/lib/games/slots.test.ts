@@ -7,6 +7,7 @@ import {
   freeSpinsFor,
   lineWin,
   playSlots,
+  scalePay,
   validateSlotsStake,
   windowAt,
 } from "./slots";
@@ -117,4 +118,27 @@ describe("slots rounds", () => {
     // σ of one buy ≈ 1 price → 4σ/√n ≈ 0.03
     expect(Math.abs(paid / (n * 27_000) - exactRtp().buyValue)).toBeLessThan(0.03);
   }, 60_000);
+});
+
+describe("slots at an owner-set RTP", () => {
+  it("the config's table_rtp is the exact RTP of the paytable", () => {
+    const e = exactRtp();
+    expect(`${e.rtp.n}/${e.rtp.d}`).toBe(`${SLOTS_CONFIG.payout_model.table_rtp.num}/${SLOTS_CONFIG.payout_model.table_rtp.den}`);
+  });
+  it("scales wins by target / table and floors", () => {
+    expect(scalePay(100000)).toBe(100000);
+    expect(scalePay(0, 9000)).toBe(0);
+    // 100000 × 0.90 / 0.958308… = 93915.47…
+    expect(scalePay(100000, 9000)).toBe(93915);
+    expect(scalePay(100000, 9900)).toBe(103307);
+    const seeds = { serverSeedHex: "0123456789abcdef".repeat(4), clientSeed: "abc", nonce: 3 };
+    const native = playSlots(seeds, { stake: 2000, buy: true });
+    const low = playSlots(seeds, { stake: 2000, buy: true }, 9000);
+    expect(low.freeSpins.map((f) => f.stops)).toEqual(native.freeSpins.map((f) => f.stops));
+    expect(low.gross).toBeLessThanOrEqual(native.gross);
+    expect(low.gross).toBe(native.freeSpins.reduce((s, f) => s + scalePay(100 * f.units * f.multiplier, 9000), 0));
+  });
+  it("the largest possible win at 99% stays under the payout cap", () => {
+    expect(scalePay(2173300000, 9900)).toBeLessThanOrEqual(SLOTS_CONFIG.payout_model.max_gross_payout);
+  });
 });

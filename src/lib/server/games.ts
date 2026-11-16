@@ -3,6 +3,7 @@ import type { CrashBet, CrashOutcome } from "../games/crash";
 import type { MinesBet, MinesOutcome } from "../games/mines";
 import type { PlinkoBet, PlinkoOutcome } from "../games/plinko";
 import type { RouletteBet, RouletteOutcome } from "../games/roulette";
+import { evaluate, type SlotsBet, type SlotsOutcome } from "../games/slots";
 import { useServerRounds, type ServerGame } from "./rounds";
 
 const ROULETTE: ServerGame<RouletteBet[], RouletteOutcome> = {
@@ -56,3 +57,31 @@ const CRASH: ServerGame<CrashBet, CrashOutcome> = {
 
 export const useServerMines = (userId: string | null) => useServerRounds(userId, MINES);
 export const useServerCrash = (userId: string | null) => useServerRounds(userId, CRASH);
+
+interface ServerSpin {
+  stops: number[];
+  multiplier?: number;
+}
+
+const SLOTS: ServerGame<SlotsBet, SlotsOutcome> = {
+  game: "slots",
+  rpc: "play_slots",
+  args: (bet) => ({ p_stake: bet.stake, p_buy: bet.buy }),
+  // The server stores the reel stops; the window and the winning lines follow from them.
+  parse: (o, _stake, gross) => {
+    const base = o.base as ServerSpin | null;
+    return {
+      bet: { stake: Number(o.bet_stake), buy: Boolean(o.buy) },
+      outcome: {
+        base: base ? evaluate(base.stops) : null,
+        freeSpins: ((o.free_spins as ServerSpin[]) ?? []).map((f) => ({ ...evaluate(f.stops), multiplier: Number(f.multiplier) })),
+        baseGross: Number(o.base_gross),
+        freeGross: Number(o.free_gross),
+        gross,
+        cost: Number(o.cost),
+      },
+    };
+  },
+};
+
+export const useServerSlots = (userId: string | null) => useServerRounds(userId, SLOTS);

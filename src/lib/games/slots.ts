@@ -95,6 +95,26 @@ export function costOf(bet: SlotsBet): number {
   return bet.buy ? bet.stake * BUY_PRICE_MULTIPLIER : bet.stake;
 }
 
+const TABLE_RTP_NUM = BigInt(slotsConfig.payout_model.table_rtp.num);
+const TABLE_RTP_DEN = BigInt(slotsConfig.payout_model.table_rtp.den);
+
+/**
+ * A win at the owner-set RTP. The paytable's exact RTP is table_rtp (a fraction); a win is multiplied
+ * by target_rtp / table_rtp and floored to a centi-point (same rule as play_slots in SQL).
+ * Without `rtpBp` the paytable's own RTP applies and the amount is unchanged.
+ */
+export function scalePay(amount: number, rtpBp?: number): number {
+  if (rtpBp === undefined || amount === 0) return amount;
+  return Number((BigInt(amount) * BigInt(rtpBp) * TABLE_RTP_DEN) / (10000n * TABLE_RTP_NUM));
+}
+
+/** RTP of the normal game and of the bought feature at an owner-set RTP, as fractions of 1. */
+export function scaledRtp(rtpBp?: number): { rtp: number; buy: number } {
+  const e = exactRtp();
+  const k = rtpBp === undefined ? 1 : rtpBp / 10000 / e.rtpValue;
+  return { rtp: e.rtpValue * k, buy: e.buyValue * k };
+}
+
 export function validateSlotsStake(stake: number): void {
   const { min, max, multiple_of } = slotsConfig.stake_limits;
   if (!Number.isSafeInteger(stake) || stake < min || stake > max) {
@@ -107,7 +127,7 @@ function spin(stream: RandomStream): SpinResult {
   return evaluate(STRIPS.map((strip) => unbiasedInteger(stream, strip.length)));
 }
 
-export function resolveSlots(stream: RandomStream, bet: SlotsBet): SlotsOutcome {
+export function resolveSlots(stream: RandomStream, bet: SlotsBet, rtpBp?: number): SlotsOutcome {
   validateSlotsStake(bet.stake);
   const lineBet = bet.stake / LINE_COUNT;
   const base = bet.buy ? null : spin(stream);
@@ -119,15 +139,15 @@ export function resolveSlots(stream: RandomStream, bet: SlotsBet): SlotsOutcome 
     freeSpins.push(f);
     if (f.units > 0) multiplier += FS_MULTIPLIER_STEP;
   }
-  const baseGross = base ? lineBet * base.units : 0;
-  const freeGross = lineBet * freeSpins.reduce((s, f) => s + f.units * f.multiplier, 0);
+  const baseGross = base ? scalePay(lineBet * base.units, rtpBp) : 0;
+  const freeGross = freeSpins.reduce((s, f) => s + scalePay(lineBet * f.units * f.multiplier, rtpBp), 0);
   const gross = baseGross + freeGross;
   if (gross > slotsConfig.payout_model.max_gross_payout) throw new Error("gross payout above the configured maximum");
   return { base, freeSpins, baseGross, freeGross, gross, cost: costOf(bet) };
 }
 
-export function playSlots(seeds: { serverSeedHex: string; clientSeed: string; nonce: number }, bet: SlotsBet): SlotsOutcome {
-  return resolveSlots(new RandomStream({ ...seeds, domain: gameDomain("slots") }), bet);
+export function playSlots(seeds: { serverSeedHex: string; clientSeed: string; nonce: number }, bet: SlotsBet, rtpBp?: number): SlotsOutcome {
+  return resolveSlots(new RandomStream({ ...seeds, domain: gameDomain("slots") }), bet, rtpBp);
 }
 
 /* ---------- exact RTP (spec 4.3) ---------- */

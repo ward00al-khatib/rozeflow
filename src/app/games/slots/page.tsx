@@ -6,6 +6,10 @@ import { useAutoPlay, useSpaceKey } from "@/components/game/BetControls";
 import { BarStatus, ControlBar } from "@/components/game/ControlBar";
 import { GameFrame, ResultStrip } from "@/components/game/GameFrame";
 import { WinBanner } from "@/components/game/WinBanner";
+import { useServerSlots } from "@/lib/server/games";
+import { useLiveConfig } from "@/lib/server/gameConfig";
+import type { ServerRound } from "@/lib/server/rounds";
+import { useMember } from "@/lib/useMember";
 import { useDemoSession, type DemoRound } from "@/lib/demo/session";
 import {
   BUY_PRICE_MULTIPLIER,
@@ -21,6 +25,7 @@ import {
   exactRtp,
   freeSpinsFor,
   playSlots,
+  scalePay,
   validateSlotsStake,
   windowAt,
   type SlotSymbol,
@@ -46,7 +51,16 @@ const MAX_WIN = Math.round((PAR.base_max_line_bet_units * (1 + 210)) / LINE_COUN
 
 export default function SlotsPage() {
   const demo = useDemoSession();
+  const member = useMember();
+  // Members play on the server with the real wallet; visitors play the demo in the browser.
+  const real = member.status === "member";
+  const server = useServerSlots(member.status === "member" ? member.profile.user_id : null);
+  const { config, refresh: refreshConfig } = useLiveConfig("slots", SLOTS_CONFIG);
+  const rtpBp = config.payout_model.target_rtp_bp;
+  const ready = member.status !== "loading" && (real ? server.ready : demo.ready);
+  const [waiting, setWaiting] = useState(false); // sent to the server, answer not here yet
   const rtp = useMemo(() => exactRtp(), []);
+  const k = rtpBp / 10000 / rtp.rtpValue; // owner-set RTP over the paytable's own
   const [stake, setStake] = useState(2000);
   const [turbo, setTurbo] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -79,7 +93,7 @@ export default function SlotsPage() {
 
   const later = (fn: () => void, ms: number) => timers.current.push(window.setTimeout(fn, ms));
   const lineBet = stake / LINE_COUNT;
-  const busy = phase !== "idle";
+  const busy = phase !== "idle" || waiting;
 
   /** Puts a spin on the reels; the rest happens in `landed`. */
   function show(spin: SpinResult, from: SlotSymbol[][]) {
@@ -90,20 +104,40 @@ export default function SlotsPage() {
     setSpinKey((k) => k + 1);
   }
 
-  function play(buy: boolean): number | null {
+  function fail(e: unknown): null {
+    setWaiting(false);
+    setError(e instanceof Error ? e.message : "تعذّر اللعب.");
+    return null;
+  }
+
+  function play(buy: boolean): number | null | Promise<number | null> {
     setError(null);
     const bet: SlotsBet = { stake, buy };
-    let r: Round;
     try {
       validateSlotsStake(stake);
-      r = demo.play("slots", bet, costOf(bet), (seeds) => {
-        const outcome = playSlots(seeds, bet);
-        return { outcome, gross: outcome.gross };
-      });
+      if (real) {
+        if (costOf(bet) > server.balance) throw new Error("رصيدك لا يكفي لهذه الجولة.");
+        setWaiting(true);
+        return server.play(bet).then((r) => {
+          setWaiting(false);
+          // The owner may have changed the RTP since this page loaded: show the new pays.
+          if (r.rtpBp !== rtpBp) refreshConfig();
+          return begin(r);
+        }, fail);
+      }
+      return begin(
+        demo.play("slots", bet, costOf(bet), (seeds) => {
+          const outcome = playSlots(seeds, bet, rtpBp);
+          return { outcome, gross: outcome.gross };
+        }),
+      );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "تعذّر اللعب.");
-      return null;
+      return fail(e);
     }
+  }
+
+  /** Puts a settled round on the reels; returns its net. */
+  function begin(r: Round): number {
     setRound(r);
     setCurrent(null);
     setPending(r.gross);
@@ -141,7 +175,7 @@ export default function SlotsPage() {
     if (phase === "spinning" && o.base) {
       const base = o.base;
       setCurrent(base);
-      const win = base.units * lineBet;
+      const win = o.baseGross;
       setLastWin(win);
       if (o.freeSpins.length > 0) {
         playSound("cashout");
@@ -155,7 +189,7 @@ export default function SlotsPage() {
     if (phase === "fsSpinning") {
       const spin = o.freeSpins[fsIndex];
       setCurrent(spin);
-      const win = spin.units * lineBet * spin.multiplier;
+      const win = scalePay(spin.units * lineBet * spin.multiplier, rtpBp);
       if (win > 0) playSound(spin.units > 0 && fsIndex + 1 < o.freeSpins.length ? "cashout" : "win");
       setFsWin((w) => w + win);
       const next = fsIndex + 1;
@@ -187,11 +221,12 @@ export default function SlotsPage() {
   const autoplay = useAutoPlay(() => play(false), busy, turbo ? 150 : 500);
   useSpaceKey(() => {
     if (phase === "spinning" || phase === "fsSpinning") setQuickStop((q) => q + 1);
-    else if (!busy && !autoplay.running && demo.ready) play(false);
+    else if (!busy && !autoplay.running && ready) play(false);
   }, !intro && !buyOpen);
 
 
-  const rounds = useMemo(() => demo.rounds.filter((r): r is Round => r.game === "slots" && "freeSpins" in (r.outcome as object)), [demo.rounds]);
+  const allRounds = real ? server.rounds : demo.rounds;
+  const rounds = useMemo(() => allRounds.filter((r): r is Round => r.game === "slots" && "freeSpins" in (r.outcome as object)), [allRounds]);
   const inFree = phase === "fsIntro" || phase === "fsSpinning" || phase === "fsOutro";
   const wins = current ? current.lineWins.map((w) => ({ line: w.line, count: w.count })) : [];
   const fsTotal = round?.outcome.freeSpins.length ?? 0;
@@ -247,7 +282,7 @@ export default function SlotsPage() {
               .slice(0, activeLine === null ? 3 : 1)
               .map((w) => (
                 <span key={w.line} className="num" style={{ borderColor: LINE_COLORS[w.line % LINE_COLORS.length] }}>
-                  {formatPoints(w.units * lineBet * current.multiplier)}
+                  {formatPoints(scalePay(w.units * lineBet * current.multiplier, rtpBp))}
                 </span>
               ))}
           </div>
@@ -331,12 +366,13 @@ export default function SlotsPage() {
   const panel = (
     <>
       <ControlBar
-        balance={demo.balance - pending}
+        balance={(real ? server.balance : demo.balance) - pending}
+        balanceLabel={real ? "رصيدك" : undefined}
         status={
           inFree ? (
             <BarStatus win={fsWin} label="ربح اللفّات المجانية" hint={<>بالتوفيق…</>} />
           ) : (
-            <BarStatus win={phase === "idle" ? lastWin : null} hint={error ?? (busy ? "بالتوفيق…" : "ضع رهانك وأدِر البكرات")} />
+            <BarStatus win={phase === "idle" ? lastWin : null} hint={error ?? (real ? server.loadError : null) ?? (busy ? "بالتوفيق…" : "ضع رهانك وأدِر البكرات")} />
           )
         }
         stake={stake}
@@ -346,7 +382,7 @@ export default function SlotsPage() {
         multipleOf={SLOTS_CONFIG.stake_limits.multiple_of}
         locked={busy || autoplay.running}
         extra={
-          <button type="button" className={styles.buy} onClick={() => setBuyOpen(true)} disabled={busy || autoplay.running || !demo.ready}>
+          <button type="button" className={styles.buy} onClick={() => setBuyOpen(true)} disabled={busy || autoplay.running || !ready}>
             <span>شراء البونص</span>
             <span className="num">{formatPoints(stake * BUY_PRICE_MULTIPLIER)}</span>
           </button>
@@ -359,14 +395,14 @@ export default function SlotsPage() {
           net: autoplay.net,
           onStart: autoplay.start,
           onStop: autoplay.stop,
-          disabled: !demo.ready || busy || intro,
+          disabled: !ready || busy || intro,
         }}
         primary={
           autoplay.running
             ? { kind: "stop", label: "إيقاف اللعب التلقائي", onClick: autoplay.stop }
             : phase === "spinning" || phase === "fsSpinning"
               ? { kind: "play", label: "إيقاف سريع", onClick: () => setQuickStop((q) => q + 1), busy: true }
-              : { kind: "play", label: "أدِر", onClick: () => play(false), disabled: !demo.ready || busy || intro }
+              : { kind: "play", label: "أدِر", onClick: () => play(false), disabled: !ready || busy || intro, busy: waiting }
         }
       />
       {buyOpen && (
@@ -383,7 +419,7 @@ export default function SlotsPage() {
               <strong className="num">{formatPoints(stake * BUY_PRICE_MULTIPLIER)}</strong>
               <span className="muted">
                 (<span className="num">{BUY_PRICE_MULTIPLIER}</span> ضعف الرهان · العائد النظري{" "}
-                <span className="num">{(rtp.buyValue * 100).toFixed(2)}%</span>)
+                <span className="num">{(rtp.buyValue * k * 100).toFixed(2)}%</span>)
               </span>
             </div>
             <div className={styles.modalActions}>
@@ -406,20 +442,21 @@ export default function SlotsPage() {
   return (
     <GameFrame
       title="السلوتس"
+      real={real}
       onReset={demo.reset}
       resetDisabled={busy || autoplay.running}
       rulesTitle="مختبر الليل: الجدول والقواعد"
       stage={stage}
       panel={panel}
-      rules={<InfoSheet lineBet={lineBet} rounds={rounds} rtp={rtp} />}
+      rules={<InfoSheet lineBet={lineBet} rounds={rounds} rtp={rtp} rtpBp={rtpBp} />}
       below={
         <DemoFairness
-          demo={demo}
+          demo={real ? server : demo}
           game="slots"
           verify={(seeds, r) => {
             const bet = r.bet as SlotsBet;
             if (typeof bet !== "object" || !("buy" in bet)) return "جولة من إصدار سابق للعبة";
-            const o = playSlots(seeds, bet);
+            const o = playSlots(seeds, bet, (r as ServerRound<SlotsBet, SlotsOutcome>).rtpBp ?? rtpBp);
             const stops = o.base ? `مواضع البكرات ${o.base.stops.join("، ")}` : "شراء لفّات";
             return `${stops}، لفّات مجانية ${o.freeSpins.length} ← العائد ${formatPoints(o.gross)}`;
           }}
@@ -464,7 +501,9 @@ function Decorations() {
   );
 }
 
-function InfoSheet({ lineBet, rounds, rtp }: { lineBet: number; rounds: Round[]; rtp: ReturnType<typeof exactRtp> }) {
+function InfoSheet({ lineBet, rounds, rtp, rtpBp }: { lineBet: number; rounds: Round[]; rtp: ReturnType<typeof exactRtp>; rtpBp: number }) {
+  // Every win is scaled by the owner-set RTP over the paytable's own RTP, so each share scales the same way.
+  const k = rtpBp / 10000 / rtp.rtpValue;
   const [tab, setTab] = useState<"pay" | "lines" | "rules" | "history">("pay");
   return (
     <div className={styles.info}>
@@ -497,7 +536,7 @@ function InfoSheet({ lineBet, rounds, rtp }: { lineBet: number; rounds: Round[];
                   {[5, 4, 3].map((n) => (
                     <div key={n}>
                       <dt className="num">{n}</dt>
-                      <dd className="num">{formatPoints(Math.round(PAYS[s][n - 3] * lineBet))}</dd>
+                      <dd className="num">{formatPoints(scalePay(Math.round(PAYS[s][n - 3] * lineBet), rtpBp))}</dd>
                     </div>
                   ))}
                 </dl>
@@ -549,12 +588,12 @@ function InfoSheet({ lineBet, rounds, rtp }: { lineBet: number; rounds: Round[];
           </div>
           <p>
             شراء البونص: <span className="num">{BUY_SPINS}</span> لفّات مجانية فوراً بسعر <span className="num">{BUY_PRICE_MULTIPLIER}</span> ضعف الرهان،
-            وعائده النظري <span className="num">{(rtp.buyValue * 100).toFixed(2)}%</span>.
+            وعائده النظري <span className="num">{(rtp.buyValue * k * 100).toFixed(2)}%</span>.
           </p>
           <p>
-            العائد النظري للعبة <span className="num">{(rtp.rtpValue * 100).toFixed(2)}%</span>، محسوب بالضبط من البكرات وجدول الدفع وليس
-            بالمحاكاة. يأتي <span className="num">{(rtp.baseValue * 100).toFixed(2)}%</span> منه من اللفّات العادية، و
-            <span className="num">{(rtp.freeValue * 100).toFixed(2)}%</span> من اللفّات المجانية. نسبة اللفّات الرابحة{" "}
+            العائد النظري للعبة <span className="num">{(rtp.rtpValue * k * 100).toFixed(2)}%</span> لكل اللاعبين، محسوب بالضبط من البكرات وجدول الدفع وليس
+            بالمحاكاة. يأتي <span className="num">{(rtp.baseValue * k * 100).toFixed(2)}%</span> منه من اللفّات العادية، و
+            <span className="num">{(rtp.freeValue * k * 100).toFixed(2)}%</span> من اللفّات المجانية. نسبة اللفّات الرابحة{" "}
             <span className="num">{(PAR.base_hit_frequency * 100).toFixed(1)}%</span>، وأعلى ربح ممكن في جولة{" "}
             <span className="num">{MAX_WIN.toLocaleString("en-US")}×</span> الرهان.
           </p>

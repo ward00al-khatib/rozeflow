@@ -147,7 +147,7 @@ select pg_temp.expect_fail($$select public.site_report()$$, 'player cannot read 
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
 select pg_temp.expect_fail($$select public.set_game_rtp('dice', 8999)$$, 'RTP below bound');
 select pg_temp.expect_fail($$select public.set_game_rtp('dice', 9901)$$, 'RTP above bound');
-select pg_temp.expect_fail($$select public.set_game_rtp('slots', 9500)$$, 'game not on the server yet');
+select pg_temp.expect_fail($$select public.set_game_rtp('chess', 9500)$$, 'unknown game');
 do $$
 declare old_rounds int; r jsonb; rep jsonb;
 begin

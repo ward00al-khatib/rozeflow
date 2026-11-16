@@ -76,6 +76,9 @@
     },
     "pays_note": "line bets for 3, 4 and 5 of a kind",
     "declared_rtp": "0.958308 (exact 93584773924094013/97656250000000000, see slots.test.ts and scripts/slots_par.py)",
+    "target_rtp_bp": 9583,
+    "table_rtp": { "num": "93584773924094013", "den": "97656250000000000" },
+    "rtp_scaling": "when the owner sets target_rtp_bp, every spin's win is multiplied by target_rtp / table_rtp and floored to a centi-point",
     "declared_buy_rtp": "0.944157 (exact 8298253238143/8789062500000)",
     "par": {
       "base_hits": 174107500,
@@ -84,7 +87,7 @@
       "base_max_line_bet_units": 2060,
       "free_spins_one_in": 116.8
     },
-    "max_gross_payout": 2173300000
+    "max_gross_payout": 2250000000
   },
   "fairness": {
     "rng_algorithm_version": "1.0",

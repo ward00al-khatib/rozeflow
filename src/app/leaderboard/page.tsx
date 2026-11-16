@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Card, Shell } from "@/components/Shell";
@@ -71,10 +72,10 @@ export default function LeaderboardPage() {
                   {i + 1}
                 </span>
                 <span className={styles.who}>
-                  <b>
+                  <Link href={`/player/?id=${r.user_id}`} className={styles.name}>
                     {r.display_name}
                     {r.me && <span className="muted"> · أنت</span>}
-                  </b>
+                  </Link>
                   <LevelBadge wagered={r.lifetime_wagered} />
                 </span>
                 <span className={styles.stats}>

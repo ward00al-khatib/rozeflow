@@ -83,7 +83,9 @@ export default function Home() {
         <>
           <div className={styles.social}>
             <section className={styles.me}>
-              <span className="muted">أهلاً {member.status === "member" && member.profile.display_name}</span>
+              <Link href="/player/" className={styles.meName}>
+                أهلاً {member.status === "member" && member.profile.display_name}
+              </Link>
               {stats && <LevelBadge wagered={stats.lifetime_wagered} progress />}
               <Link href="/leaderboard/" className={styles.boardLink}>
                 لوحة الصدارة الأسبوعية

@@ -1,11 +1,15 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DemoFairness } from "@/components/DemoFairness";
+import { RtpHistory } from "@/components/RtpHistory";
 import { useAutoPlay, useSpaceKey } from "@/components/game/BetControls";
 import { BarStatus, ControlBar } from "@/components/game/ControlBar";
 import { GameFrame, ResultStrip } from "@/components/game/GameFrame";
 import { WinBanner } from "@/components/game/WinBanner";
 import { useDemoSession, type DemoRound } from "@/lib/demo/session";
+import { useServerDice } from "@/lib/server/dice";
+import { fmtRtp, useLiveConfig } from "@/lib/server/gameConfig";
+import { useMember } from "@/lib/useMember";
 import {
   DICE_CONFIG,
   MULTIPLIER_SCALE,
@@ -61,6 +65,13 @@ function Cube({ face, className }: { face: number; className: string }) {
 
 export default function DicePage() {
   const demo = useDemoSession();
+  const member = useMember();
+  // Members play on the server with the real wallet; visitors play the demo in the browser.
+  const real = member.status === "member";
+  const server = useServerDice(member.status === "member" ? member.profile.user_id : null);
+  const { config, refresh: refreshConfig } = useLiveConfig("dice", DICE_CONFIG);
+  const ready = member.status !== "loading" && (real ? server.ready : demo.ready);
+  const rtpBp = config.payout_model.target_rtp_bp;
   const [direction, setDirection] = useState<DiceDirection>("under");
   const [target, setTarget] = useState(5000);
   const [stake, setStake] = useState(1000);
@@ -72,12 +83,15 @@ export default function DicePage() {
   const [multText, setMultText] = useState<string | null>(null);
   const [chanceText, setChanceText] = useState<string | null>(null);
   const anim = useRef(0);
+  const landing = useRef<Round | null>(null);
+  const [awaiting, setAwaiting] = useState(false); // sent to the server, answer not here yet
 
-  const { min, max } = DICE_CONFIG.stake_limits;
-  const bounds = DICE_CONFIG.rules.win_count_bounds;
-  const wc = winCount(target, direction);
+  const { min, max } = config.stake_limits;
+  const bounds = config.rules.win_count_bounds;
+  const wc = winCount(target, direction, config);
   const multiplier = multiplierFor(
     Math.min(Math.max(wc, bounds.min), bounds.max),
+    config,
   );
   const potential =
     Number.isSafeInteger(stake) && stake > 0
@@ -101,31 +115,17 @@ export default function DicePage() {
     setDirection(direction === "under" ? "over" : "under");
   }
 
-  /** Plays one round; returns the net in centi-points, or null if it could not play. */
-  function rollOnce(): number | null {
-    setError(null);
-    const bet: DiceBet = { stake, target, direction };
-    let round: Round;
-    try {
-      validateBet(bet);
-      round = demo.play("dice", bet, stake, (seeds) => {
-        const outcome = playDice(seeds, bet);
-        return { outcome, gross: outcome.gross };
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "تعذّر اللعب.");
-      return null;
-    }
-    // Spin the number, then land on the real roll.
+  /** Spins the number until the round is known and the minimum time has passed, then lands on the real roll. */
+  function spin() {
+    landing.current = null;
     setRolling(true);
-    setLast(round);
     const dur = turbo ? TURBO_MS : ROLL_MS;
     const t0 = performance.now();
     let lastTick = 0;
     cancelAnimationFrame(anim.current);
     const step = (t: number) => {
-      const p = (t - t0) / dur;
-      if (p >= 1) {
+      const round = landing.current;
+      if (t - t0 >= dur && round) {
         setShown(round.outcome.roll);
         setRolling(false);
         if (!round.outcome.win) playSound("lose");
@@ -139,17 +139,61 @@ export default function DicePage() {
       anim.current = requestAnimationFrame(step);
     };
     anim.current = requestAnimationFrame(step);
+  }
+
+  function land(round: Round): number {
+    landing.current = round;
+    setAwaiting(false);
+    setLast(round);
     return round.gross - round.stake;
+  }
+
+  function fail(e: unknown): null {
+    cancelAnimationFrame(anim.current);
+    setRolling(false);
+    setAwaiting(false);
+    setError(e instanceof Error ? e.message : "تعذّر اللعب.");
+    return null;
+  }
+
+  /** Plays one round; returns the net in centi-points, or null if it could not play. */
+  function rollOnce(): number | null | Promise<number | null> {
+    setError(null);
+    const bet: DiceBet = { stake, target, direction };
+    try {
+      validateBet(bet, config);
+      if (real) {
+        if (stake > server.balance) throw new Error("رصيدك لا يكفي لهذه الجولة.");
+        spin();
+        setAwaiting(true);
+        return server.play(bet).then((round) => {
+          // The owner may have changed the RTP since this page loaded: show the new multipliers.
+          if (round.rtpBp !== rtpBp) refreshConfig();
+          return land(round);
+        }, fail);
+      }
+      const round = demo.play("dice", bet, stake, (seeds) => {
+        const outcome = playDice(seeds, bet, config);
+        return { outcome, gross: outcome.gross };
+      });
+      spin();
+      return land(round);
+    } catch (e) {
+      return fail(e);
+    }
   }
 
   const autoplay = useAutoPlay(rollOnce, rolling, turbo ? 120 : 380);
   const locked = rolling || autoplay.running;
-  useSpaceKey(() => !locked && demo.ready && rollOnce(), true);
+  useSpaceKey(() => !locked && ready && rollOnce(), true);
 
+  const allRounds = real ? server.rounds : demo.rounds;
   const rounds = useMemo(
-    () => demo.rounds.filter((r): r is Round => r.game === "dice"),
-    [demo.rounds],
+    () => allRounds.filter((r): r is Round => r.game === "dice"),
+    [allRounds],
   );
+  // While the number is still spinning, the round that is about to land stays out of the lists.
+  const hidden = rolling && !awaiting ? 1 : 0;
   const outcome = !rolling ? last?.outcome : undefined;
 
   const zoneStart = direction === "under" ? 0 : target / 100;
@@ -159,7 +203,7 @@ export default function DicePage() {
     <>
       <ResultStrip
         items={rounds
-          .slice(rolling ? 1 : 0, (rolling ? 1 : 0) + 14)
+          .slice(hidden, hidden + 14)
           .map((r) => ({
             key: `${r.serverSeedHash}:${r.nonce}`,
             label: fmtRoll(r.outcome.roll),
@@ -266,7 +310,7 @@ export default function DicePage() {
               }
               onBlur={() => {
                 const m = Number(multText);
-                if (m > 0) setWinCount(9900 / m);
+                if (m > 0) setWinCount(rtpBp / m);
                 setMultText(null);
               }}
               onKeyDown={(e) =>
@@ -327,10 +371,11 @@ export default function DicePage() {
 
   const panel = (
     <ControlBar
-      balance={demo.balance}
+      balance={real ? server.balance : demo.balance}
+      balanceLabel={real ? "رصيدك" : undefined}
       status={
-        error ? (
-          <span className="error">{error}</span>
+        error || (real && server.loadError) ? (
+          <span className="error">{error ?? server.loadError}</span>
         ) : (
           <BarStatus
             win={!rolling && last?.outcome.win ? last.gross : null}
@@ -355,12 +400,12 @@ export default function DicePage() {
         net: autoplay.net,
         onStart: autoplay.start,
         onStop: autoplay.stop,
-        disabled: !demo.ready || rolling,
+        disabled: !ready || rolling,
       }}
       primary={
         autoplay.running
           ? { kind: "stop", label: "إيقاف", onClick: autoplay.stop }
-          : { kind: "play", label: "ارمِ النرد", onClick: () => rollOnce(), disabled: !demo.ready || rolling, busy: rolling }
+          : { kind: "play", label: "ارمِ النرد", onClick: () => rollOnce(), disabled: !ready || rolling, busy: rolling }
       }
     />
   );
@@ -369,6 +414,7 @@ export default function DicePage() {
     <GameFrame
       title="النرد"
       tint="#3ddcff"
+      real={real}
       onReset={demo.reset}
       resetDisabled={locked}
       stage={stage}
@@ -382,8 +428,9 @@ export default function DicePage() {
             أو أعلى.
           </p>
           <p>
-            المضاعف = <span className="num">99 ÷ فرصة الفوز</span>، فالعائد
-            النظري <span className="num">99%</span> لأي اختيار. فرصة الفوز من{" "}
+            المضاعف = <span className="num">{fmtRtp(rtpBp)} ÷ فرصة الفوز</span>، فالعائد
+            النظري <span className="num">{fmtRtp(rtpBp)}%</span> لأي اختيار ولكل اللاعبين
+            (إصدار الإعدادات <span className="num">{config.config_version}</span>). فرصة الفوز من{" "}
             <span className="num">{bounds.min / 100}%</span> إلى{" "}
             <span className="num">{bounds.max / 100}%</span>.
           </p>
@@ -395,6 +442,7 @@ export default function DicePage() {
             كل رمية تُحسب من بذور معلنة مسبقاً، ويمكنك التحقق منها في قسم
             «العدالة» أسفل الصفحة.
           </p>
+          <RtpHistory gameId="dice" />
         </>
       }
       below={
@@ -415,7 +463,7 @@ export default function DicePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rounds.slice(0, 12).map((r) => (
+                  {rounds.slice(hidden, hidden + 12).map((r) => (
                     <tr key={`${r.serverSeedHash}:${r.nonce}`}>
                       <td className="num">{r.nonce}</td>
                       <td>
@@ -441,10 +489,10 @@ export default function DicePage() {
             )}
           </section>
           <DemoFairness
-            demo={demo}
+            demo={real ? server : demo}
             game="dice"
             verify={(seeds, round) => {
-              const o = playDice(seeds, round.bet as DiceBet);
+              const o = playDice(seeds, round.bet as DiceBet, config);
               return `${fmtRoll(o.roll)} (${o.win ? "فوز" : "خسارة"})`;
             }}
           />

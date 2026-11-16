@@ -22,6 +22,7 @@ export interface PrimaryAction {
  */
 export function ControlBar({
   balance,
+  balanceLabel,
   status,
   stake,
   onStake,
@@ -38,6 +39,7 @@ export function ControlBar({
   primary,
 }: {
   balance: number;
+  balanceLabel?: string; // defaults to the demo label; real play passes "رصيدك"
   status: ReactNode;
   stake: number;
   onStake: (centi: number) => void;
@@ -88,7 +90,7 @@ export function ControlBar({
   return (
     <div className={styles.bar}>
       <div className={`${styles.info} ${styles.balance} ${bump ? styles[bump] : ""}`}>
-        <span className={styles.label}>الرصيد التجريبي</span>
+        <span className={styles.label}>{balanceLabel ?? "الرصيد التجريبي"}</span>
         <span className={`num ${styles.value}`}>{formatPoints(balance)}</span>
       </div>
 

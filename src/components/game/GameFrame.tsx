@@ -20,6 +20,7 @@ export function GameFrame({
   below,
   rulesTitle,
   tint,
+  real,
 }: {
   title: string;
   onReset: () => void;
@@ -30,6 +31,7 @@ export function GameFrame({
   below?: ReactNode;
   rulesTitle?: string;
   tint?: string; // the game's own colour, washed over the stage
+  real?: boolean; // a member playing on the server with the real wallet (no demo reset)
 }) {
   const sound = useSound();
   const [showRules, setShowRules] = useState(false);
@@ -81,12 +83,21 @@ export function GameFrame({
 
       <div className={styles.below}>
         {below}
-        <div className={styles.footer}>
-          <span>النقاط هنا تجريبية وتبقى في متصفحك، والرصيد الحقيقي لا يتأثر.</span>
-          <button type="button" className={styles.linkButton} onClick={onReset} disabled={resetDisabled}>
-            إعادة الرصيد إلى <span className="num">1,000</span>
-          </button>
-        </div>
+        {real ? (
+          <div className={styles.footer}>
+            <span>تلعب برصيدك الحقيقي: كل جولة تُحسب على الخادم وتُسجَّل في دفتر محفظتك.</span>
+            <Link href="/wallet/" className={styles.linkButton}>
+              المحفظة
+            </Link>
+          </div>
+        ) : (
+          <div className={styles.footer}>
+            <span>النقاط هنا تجريبية وتبقى في متصفحك، والرصيد الحقيقي لا يتأثر.</span>
+            <button type="button" className={styles.linkButton} onClick={onReset} disabled={resetDisabled}>
+              إعادة الرصيد إلى <span className="num">1,000</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {showRules && (

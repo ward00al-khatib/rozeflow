@@ -28,19 +28,22 @@ function binom(n: number, k: number): bigint {
 }
 
 /** Cash-out multiplier after k safe picks (k ≥ 1), in ten-thousandths. */
-export function minesMultiplier(mines: number, k: number): number {
+export const MINES_RTP_BP = minesConfig.payout_model.target_rtp_bp;
+
+export function minesMultiplier(mines: number, k: number, rtpBp: number = MINES_RTP_BP): number {
   if (k < 1 || k > N - mines) throw new Error("k out of range");
-  return Number((BigInt(minesConfig.payout_model.target_rtp_bp) * binom(N, k)) / binom(N - mines, k));
+  return Number((BigInt(rtpBp) * binom(N, k)) / binom(N - mines, k));
 }
 
 /** Most safe picks allowed: all safe tiles, but never past the multiplier cap. */
 const maxPicksCache = new Map<number, number>();
-export function maxPicks(mines: number): number {
-  const hit = maxPicksCache.get(mines);
+export function maxPicks(mines: number, rtpBp: number = MINES_RTP_BP): number {
+  const key = rtpBp * 100 + mines;
+  const hit = maxPicksCache.get(key);
   if (hit !== undefined) return hit;
   let k = 0;
-  while (k < N - mines && minesMultiplier(mines, k + 1) <= minesConfig.payout_model.max_multiplier) k++;
-  maxPicksCache.set(mines, k);
+  while (k < N - mines && minesMultiplier(mines, k + 1, rtpBp) <= minesConfig.payout_model.max_multiplier) k++;
+  maxPicksCache.set(key, k);
   return k;
 }
 
@@ -77,20 +80,20 @@ export interface MinesOutcome {
 }
 
 /** Applies one pick. Returns the new state; the caller settles when status is no longer "playing". */
-export function applyPick(state: MinesState, tile: number, mineTiles: number[], bet: MinesBet): MinesState {
+export function applyPick(state: MinesState, tile: number, mineTiles: number[], bet: MinesBet, rtpBp: number = MINES_RTP_BP): MinesState {
   if (state.status !== "playing") throw new Error("الجولة منتهية.");
   if (!Number.isInteger(tile) || tile < 0 || tile >= N) throw new Error("خانة غير صالحة.");
   if (state.picks.includes(tile)) throw new Error("هذه الخانة مكشوفة.");
   const picks = [...state.picks, tile];
   if (mineTiles.includes(tile)) return { picks, status: "busted" };
-  return { picks, status: picks.length >= maxPicks(bet.mines) ? "cashed" : "playing" };
+  return { picks, status: picks.length >= maxPicks(bet.mines, rtpBp) ? "cashed" : "playing" };
 }
 
-export function settleMines(state: MinesState, mineTiles: number[], bet: MinesBet): MinesOutcome {
+export function settleMines(state: MinesState, mineTiles: number[], bet: MinesBet, rtpBp: number = MINES_RTP_BP): MinesOutcome {
   if (state.status === "busted") return { mines: mineTiles, picks: state.picks, status: "busted", multiplier: 0, gross: 0 };
   const k = state.picks.length;
   if (k < 1) throw new Error("لا يمكن التحصيل قبل أول اختيار.");
-  const multiplier = minesMultiplier(bet.mines, k);
+  const multiplier = minesMultiplier(bet.mines, k, rtpBp);
   const gross = Math.floor((bet.stake * multiplier) / MINES_SCALE);
   if (gross > minesConfig.payout_model.max_gross_payout) throw new Error("gross payout above the configured maximum");
   return { mines: mineTiles, picks: state.picks, status: "cashed", multiplier, gross };
@@ -101,12 +104,13 @@ export function replayMines(
   seeds: { serverSeedHex: string; clientSeed: string; nonce: number },
   bet: MinesBet,
   picks: number[],
+  rtpBp: number = MINES_RTP_BP,
 ): MinesOutcome {
   const mineTiles = minePositions(seeds, bet.mines);
   let state: MinesState = { picks: [], status: "playing" };
   for (const t of picks) {
-    state = applyPick(state, t, mineTiles, bet);
+    state = applyPick(state, t, mineTiles, bet, rtpBp);
     if (state.status !== "playing") break;
   }
-  return settleMines(state.status === "playing" ? { ...state, status: "cashed" } : state, mineTiles, bet);
+  return settleMines(state.status === "playing" ? { ...state, status: "cashed" } : state, mineTiles, bet, rtpBp);
 }

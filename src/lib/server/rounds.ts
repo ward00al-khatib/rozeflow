@@ -16,6 +16,9 @@ const ERRORS: Record<string, string> = {
   STAKE_OUT_OF_RANGE: "قيمة الدخول خارج الحدود المسموحة.",
   BAD_BET: "اختيار غير صالح.",
   CLIENT_SEED_TOO_LONG: "البذرة أطول من 64 حرفاً.",
+  OPEN_ROUND: "لديك جولة مفتوحة. أكملها أولاً.",
+  NO_OPEN_ROUND: "لا توجد جولة مفتوحة.",
+  NOTHING_TO_CASH: "اكشف خانة واحدة على الأقل قبل التحصيل.",
 };
 const OFFLINE = "تعذّر الاتصال بالخادم. حاول مرة أخرى.";
 
@@ -31,10 +34,14 @@ export interface ServerOutcome {
   [field: string]: unknown;
 }
 
-interface PlayResult extends ServerOutcome {
+/** A round as the server reports it. `open` is true while a multi-step round (Mines, Crash) is still running. */
+export interface RoundView extends ServerOutcome {
   round_id: string;
+  game?: string;
+  open?: boolean;
+  status?: string;
   stake: number;
-  gross: number;
+  gross: number | null;
   nonce: number;
   available: number;
 }
@@ -130,28 +137,51 @@ export function useServerRounds<B, O>(userId: string | null, def: ServerGame<B, 
     void load().catch(() => setLoadError(OFFLINE));
   }, [load]);
 
-  /** One round. The same idempotency key is sent again if the network drops, so a round is never played twice. */
-  const play = useCallback(
-    async (bet: B): Promise<ServerRound<B, O>> => {
-      if (busy.current) throw new Error("انتظر انتهاء الجولة الحالية.");
+  /**
+   * One call to a game function. A settled round goes to the history; an open one is returned as is.
+   * With `keyed`, an idempotency key is added and the same call is sent again if the network drops,
+   * so a round is never played twice.
+   */
+  const call = useCallback(
+    async (rpc: string, args: Record<string, unknown>, keyed: boolean): Promise<{ view: RoundView; round: ServerRound<B, O> | null }> => {
+      if (busy.current) throw new Error("انتظر انتهاء الطلب الحالي.");
       busy.current = true;
       try {
-        const args = { ...def.args(bet), p_idempotency_key: crypto.randomUUID() };
-        let res = await supabase().rpc(def.rpc, args);
-        if (res.error && !ERRORS[res.error.message]) res = await supabase().rpc(def.rpc, args);
+        const body = keyed ? { ...args, p_idempotency_key: crypto.randomUUID() } : args;
+        let res = await supabase().rpc(rpc, body);
+        if (keyed && res.error && !ERRORS[res.error.message]) res = await supabase().rpc(rpc, body);
         if (res.error) throw serverError(res.error.message);
-        const p = res.data as PlayResult;
-        const round = toRound(p, p.round_id, Number(p.nonce), Number(p.stake), Number(p.gross), Date.now());
-        setBalance(Number(p.available));
-        setSeed({ serverSeedHash: p.server_seed_hash, clientSeed: p.client_seed, nonce: Number(p.nonce) + 1 });
-        setRounds((rs) => [round, ...rs].slice(0, MAX_ROUNDS));
-        return round;
+        const view = res.data as RoundView;
+        setBalance(Number(view.available));
+        if (view.open) return { view, round: null };
+        const round = toRound(view, view.round_id, Number(view.nonce), Number(view.stake), Number(view.gross), Date.now());
+        setSeed((sd) => (sd.serverSeedHash === view.server_seed_hash ? { ...sd, nonce: Math.max(sd.nonce, Number(view.nonce) + 1) } : sd));
+        setRounds((rs) => (rs.some((r) => r.id === round.id) ? rs : [round, ...rs].slice(0, MAX_ROUNDS)));
+        return { view, round };
       } finally {
         busy.current = false;
       }
     },
-    [def, toRound],
+    [toRound],
   );
+
+  const play = useCallback(
+    async (bet: B): Promise<ServerRound<B, O>> => {
+      const { round } = await call(def.rpc, def.args(bet), true);
+      if (!round) throw serverError(undefined);
+      return round;
+    },
+    [call, def],
+  );
+
+  /** The member's open round in this game, if a reload or a lost answer left one behind; also refreshes the history. */
+  const resume = useCallback(async (): Promise<RoundView | null> => {
+    const { data, error } = await supabase().rpc("my_open_round");
+    await load();
+    if (error || !data) return null;
+    const view = data as RoundView;
+    return view.open && view.game === def.game ? view : null;
+  }, [load, def.game]);
 
   const rotateSeeds = useCallback(
     async (clientSeed: string) => {
@@ -164,5 +194,5 @@ export function useServerRounds<B, O>(userId: string | null, def: ServerGame<B, 
     [applyPairs],
   );
 
-  return { ready, balance, rounds, revealed, ...seed, open: null, play, rotateSeeds, loadError, reload: load };
+  return { ready, balance, rounds, revealed, ...seed, open: null, play, call, resume, rotateSeeds, loadError, reload: load };
 }

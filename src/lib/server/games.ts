@@ -1,4 +1,6 @@
 "use client";
+import type { CrashBet, CrashOutcome } from "../games/crash";
+import type { MinesBet, MinesOutcome } from "../games/mines";
 import type { PlinkoBet, PlinkoOutcome } from "../games/plinko";
 import type { RouletteBet, RouletteOutcome } from "../games/roulette";
 import { useServerRounds, type ServerGame } from "./rounds";
@@ -25,3 +27,32 @@ const PLINKO: ServerGame<PlinkoBet, PlinkoOutcome> = {
 
 export const useServerRoulette = (userId: string | null) => useServerRounds(userId, ROULETTE);
 export const useServerPlinko = (userId: string | null) => useServerRounds(userId, PLINKO);
+
+const MINES: ServerGame<MinesBet, MinesOutcome> = {
+  game: "mines",
+  rpc: "mines_start",
+  args: (bet) => ({ p_stake: bet.stake, p_mines: bet.mines }),
+  parse: (o, stake, gross) => ({
+    bet: { stake, mines: Number(o.mines_count) },
+    outcome: {
+      mines: (o.mines as number[]) ?? [],
+      picks: (o.picks as number[]) ?? [],
+      status: o.status === "cashed" ? "cashed" : "busted",
+      multiplier: Number(o.multiplier),
+      gross,
+    },
+  }),
+};
+
+const CRASH: ServerGame<CrashBet, CrashOutcome> = {
+  game: "crash",
+  rpc: "crash_start",
+  args: (bet) => ({ p_stake: bet.stake, p_auto_cashout: bet.autoCashout }),
+  parse: (o, stake, gross) => ({
+    bet: { stake, autoCashout: Number(o.auto_cashout) },
+    outcome: { crashPoint: Number(o.crash_point), cashedAt: o.cashed_at == null ? null : Number(o.cashed_at), gross },
+  }),
+};
+
+export const useServerMines = (userId: string | null) => useServerRounds(userId, MINES);
+export const useServerCrash = (userId: string | null) => useServerRounds(userId, CRASH);

@@ -317,3 +317,12 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.meName {
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.meName:hover {
+  color: var(--ink);
+}

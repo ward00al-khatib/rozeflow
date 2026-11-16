@@ -1,0 +1,165 @@
+.hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffd27a, var(--signal) 60%, #b4560c);
+  color: var(--paper);
+  font-family: var(--font-heading), sans-serif;
+  font-size: 32px;
+  font-weight: 800;
+  box-shadow: 0 0 30px color-mix(in srgb, var(--signal) 35%, transparent);
+}
+
+.heroText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.heroText h1 {
+  margin: 0;
+  font-size: 26px;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tiles > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  background: var(--sheet);
+}
+
+.tiles small {
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.tiles b {
+  font-size: 20px;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.big {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.big > b {
+  font-size: 26px;
+}
+
+.big > b.num {
+  color: var(--win);
+}
+
+.plus {
+  color: var(--win);
+}
+
+.minus {
+  color: var(--loss);
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.table th,
+.table td {
+  text-align: right;
+}
+
+.table th {
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--ink-3);
+  padding: 6px 8px;
+}
+
+.table td {
+  padding: 8px;
+  border-top: 1px solid var(--rule);
+}
+
+.filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.filter select {
+  width: auto;
+}
+
+.history {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.history li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.hGame,
+.hNums {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hNums {
+  align-items: flex-end;
+}
+
+.note {
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

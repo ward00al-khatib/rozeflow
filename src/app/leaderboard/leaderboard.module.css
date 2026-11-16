@@ -124,3 +124,13 @@
     gap: 6px;
   }
 }
+
+.name {
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.name:hover {
+  color: var(--signal-ink);
+}

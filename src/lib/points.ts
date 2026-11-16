@@ -17,6 +17,7 @@ export const LEDGER_LABELS: Record<string, string> = {
   RECOVERY_GRANT: "استعادة الرصيد",
   ADMIN_ADJUSTMENT: "تعديل إداري",
   REVERSAL: "قيد عكسي",
+  DAILY_BONUS: "المكافأة اليومية",
 };
 
 /** Signed effect of a ledger entry on the available balance (spec 5.2). */

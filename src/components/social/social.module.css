@@ -1,0 +1,193 @@
+/* Social layer: level chips, big-win ticker, daily bonus (spec appendix ي). */
+
+.levelWrap {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.level {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 3px 10px 3px 4px;
+  border-radius: 999px;
+  border: 1px solid var(--hair);
+  background: var(--smoke);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.levelN {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--hair);
+  font-size: 12px;
+}
+
+.level[data-level="5"] .levelN,
+.level[data-level="6"] .levelN {
+  background: var(--signal);
+  color: var(--paper);
+}
+
+.level[data-level="7"] .levelN,
+.level[data-level="8"] .levelN {
+  background: linear-gradient(135deg, #ffd27a, var(--signal));
+  color: var(--paper);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--signal) 50%, transparent);
+}
+
+.levelProgress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bar {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--smoke);
+  overflow: hidden;
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--signal);
+}
+
+/* ticker */
+
+.ticker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(100%, 1080px);
+  padding: 8px 12px;
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sheet) 85%, transparent);
+  font-size: 14px;
+  overflow: hidden;
+}
+
+.tickLabel {
+  flex: none;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--signal);
+  color: var(--paper);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.tickViewport {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+.tickTrack {
+  display: flex;
+  width: max-content;
+  animation: tick linear infinite;
+}
+
+.tickCopy {
+  display: flex;
+}
+
+.tickItem {
+  padding-inline: 18px;
+  white-space: nowrap;
+}
+
+.tickMult {
+  color: var(--win);
+  font-weight: 700;
+}
+
+@keyframes tick {
+  to {
+    transform: translateX(50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tickTrack {
+    animation: none;
+  }
+  .tickCopy {
+    display: none;
+  }
+}
+
+/* panels on the home page */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--hair);
+  border-radius: 18px;
+  background: var(--sheet);
+}
+
+.panel h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.panel p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.panelHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.streak {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.streak li {
+  display: grid;
+  place-items: center;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--hair);
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+.streak li[data-done] {
+  background: color-mix(in srgb, var(--signal) 22%, transparent);
+  border-color: var(--signal);
+  color: var(--ink);
+}
+
+.streak li[data-today] {
+  border-color: var(--signal);
+  border-style: dashed;
+  color: var(--signal-ink);
+}

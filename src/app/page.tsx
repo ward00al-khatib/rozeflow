@@ -6,6 +6,10 @@ import { Ambient } from "@/components/fx/Ambient";
 import { GameCover, type GameId } from "@/components/lobby/Covers";
 import { useMember } from "@/lib/useMember";
 import { DeviceNotice } from "@/components/DeviceNotice";
+import { BigWinTicker } from "@/components/social/BigWinTicker";
+import { DailyBonus } from "@/components/social/DailyBonus";
+import { LevelBadge } from "@/components/social/LevelBadge";
+import { useMyStats } from "@/lib/social";
 import styles from "./page.module.css";
 
 const GAMES: Array<{ id: GameId; name: string; tag: string; fact: [string, string]; wide?: boolean }> = [
@@ -21,6 +25,8 @@ export default function Home() {
   const member = useMember();
   const router = useRouter();
   const [linkError, setLinkError] = useState<string | null>(null);
+  const uid = member.status === "member" ? member.profile.user_id : null;
+  const stats = useMyStats(uid);
 
   // Supabase sends failed email links back as #error=...&error_code=... (e.g. otp_expired).
   useEffect(() => {
@@ -72,6 +78,25 @@ export default function Home() {
           </p>
         )}
       </section>
+
+      {uid && (
+        <>
+          <div className={styles.social}>
+            <section className={styles.me}>
+              <span className="muted">أهلاً {member.status === "member" && member.profile.display_name}</span>
+              {stats && <LevelBadge wagered={stats.lifetime_wagered} progress />}
+              <Link href="/leaderboard/" className={styles.boardLink}>
+                لوحة الصدارة الأسبوعية
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+            </section>
+            <DailyBonus userId={uid} />
+          </div>
+          <BigWinTicker userId={uid} />
+        </>
+      )}
 
       <ul className={styles.games}>
         {GAMES.map((g, i) => (

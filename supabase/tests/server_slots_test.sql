@@ -5,8 +5,13 @@ insert into auth.users (id) values
   ('00000000-0000-0000-0000-0000000000a1'),
   ('00000000-0000-0000-0000-0000000000b2');
 
-create function pg_temp.as_user(uid text) returns void language sql as
-$$ select set_config('request.jwt.claim.sub', uid, true) $$;
+-- Signs in as uid on one session and device (spec appendix ط: game calls need an approved device).
+create function pg_temp.as_user(uid text) returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claim.sub', uid, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', uid, 'session_id', 'sess-' || uid)::text, true);
+  if uid <> '' then perform public.register_device('device-key-' || replace(uid, '-', ''), 'test'); end if;
+end $$;
 
 create function pg_temp.expect_fail(stmt text, label text) returns void language plpgsql as $$
 begin

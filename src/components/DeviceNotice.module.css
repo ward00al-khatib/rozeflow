@@ -1,0 +1,10 @@
+.notice {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--rule);
+  border-inline-start: 4px solid var(--signal-ink);
+  border-radius: 10px;
+  background: var(--sheet);
+  color: var(--ink);
+  line-height: 1.7;
+}

@@ -8,7 +8,7 @@ import { WinBanner } from "@/components/game/WinBanner";
 import ui from "@/components/game/stage.module.css";
 import { useDemoSession, type DemoRound } from "@/lib/demo/session";
 import { useServerRoulette } from "@/lib/server/games";
-import { useMember } from "@/lib/useMember";
+import { playsReal, useMember } from "@/lib/useMember";
 import {
   ROULETTE_CONFIG,
   betKey,
@@ -75,8 +75,8 @@ export default function RoulettePage() {
   const demo = useDemoSession();
   const member = useMember();
   // Members play on the server with the real wallet; visitors play the demo in the browser.
-  const real = member.status === "member";
-  const server = useServerRoulette(member.status === "member" ? member.profile.user_id : null);
+  const real = playsReal(member);
+  const server = useServerRoulette(real ? member.profile.user_id : null);
   const ready = member.status !== "loading" && (real ? server.ready : demo.ready);
   const [waiting, setWaiting] = useState(false); // sent to the server, answer not here yet
   const [chip, setChip] = useState(1000);
@@ -348,6 +348,7 @@ export default function RoulettePage() {
       title="الروليت"
       tint="#b9405a"
       real={real}
+      device={member.status === "member" ? member.device : undefined}
       onReset={demo.reset}
       resetDisabled={locked}
       stage={stage}

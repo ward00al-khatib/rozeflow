@@ -11,7 +11,7 @@ import { useDemoSession, type DemoRound, type OpenRound } from "@/lib/demo/sessi
 import { useServerMines } from "@/lib/server/games";
 import { fmtRtp, useLiveConfig } from "@/lib/server/gameConfig";
 import type { RoundView, ServerRound } from "@/lib/server/rounds";
-import { useMember } from "@/lib/useMember";
+import { playsReal, useMember } from "@/lib/useMember";
 import {
   MINES_CONFIG,
   MINES_SCALE,
@@ -76,8 +76,8 @@ export default function MinesPage() {
   const demo = useDemoSession();
   const member = useMember();
   // Members play on the server with the real wallet; visitors play the demo in the browser.
-  const real = member.status === "member";
-  const server = useServerMines(member.status === "member" ? member.profile.user_id : null);
+  const real = playsReal(member);
+  const server = useServerMines(real ? member.profile.user_id : null);
   const { config, refresh: refreshConfig } = useLiveConfig("mines", MINES_CONFIG);
   const liveRtp = config.payout_model.target_rtp_bp;
   const ready = member.status !== "loading" && (real ? server.ready : demo.ready);
@@ -389,6 +389,7 @@ export default function MinesPage() {
       title="الألغام"
       tint="#3ecf8e"
       real={real}
+      device={member.status === "member" ? member.device : undefined}
       onReset={demo.reset}
       resetDisabled={playing}
       stage={stage}

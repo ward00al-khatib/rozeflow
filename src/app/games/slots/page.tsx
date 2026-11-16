@@ -9,7 +9,7 @@ import { WinBanner } from "@/components/game/WinBanner";
 import { useServerSlots } from "@/lib/server/games";
 import { useLiveConfig } from "@/lib/server/gameConfig";
 import type { ServerRound } from "@/lib/server/rounds";
-import { useMember } from "@/lib/useMember";
+import { playsReal, useMember } from "@/lib/useMember";
 import { useDemoSession, type DemoRound } from "@/lib/demo/session";
 import {
   BUY_PRICE_MULTIPLIER,
@@ -53,8 +53,8 @@ export default function SlotsPage() {
   const demo = useDemoSession();
   const member = useMember();
   // Members play on the server with the real wallet; visitors play the demo in the browser.
-  const real = member.status === "member";
-  const server = useServerSlots(member.status === "member" ? member.profile.user_id : null);
+  const real = playsReal(member);
+  const server = useServerSlots(real ? member.profile.user_id : null);
   const { config, refresh: refreshConfig } = useLiveConfig("slots", SLOTS_CONFIG);
   const rtpBp = config.payout_model.target_rtp_bp;
   const ready = member.status !== "loading" && (real ? server.ready : demo.ready);
@@ -443,6 +443,7 @@ export default function SlotsPage() {
     <GameFrame
       title="السلوتس"
       real={real}
+      device={member.status === "member" ? member.device : undefined}
       onReset={demo.reset}
       resetDisabled={busy || autoplay.running}
       rulesTitle="مختبر الليل: الجدول والقواعد"

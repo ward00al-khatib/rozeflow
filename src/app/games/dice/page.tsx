@@ -9,7 +9,7 @@ import { WinBanner } from "@/components/game/WinBanner";
 import { useDemoSession, type DemoRound } from "@/lib/demo/session";
 import { useServerDice } from "@/lib/server/dice";
 import { fmtRtp, useLiveConfig } from "@/lib/server/gameConfig";
-import { useMember } from "@/lib/useMember";
+import { playsReal, useMember } from "@/lib/useMember";
 import {
   DICE_CONFIG,
   MULTIPLIER_SCALE,
@@ -67,8 +67,8 @@ export default function DicePage() {
   const demo = useDemoSession();
   const member = useMember();
   // Members play on the server with the real wallet; visitors play the demo in the browser.
-  const real = member.status === "member";
-  const server = useServerDice(member.status === "member" ? member.profile.user_id : null);
+  const real = playsReal(member);
+  const server = useServerDice(real ? member.profile.user_id : null);
   const { config, refresh: refreshConfig } = useLiveConfig("dice", DICE_CONFIG);
   const ready = member.status !== "loading" && (real ? server.ready : demo.ready);
   const rtpBp = config.payout_model.target_rtp_bp;
@@ -415,6 +415,7 @@ export default function DicePage() {
       title="النرد"
       tint="#3ddcff"
       real={real}
+      device={member.status === "member" ? member.device : undefined}
       onReset={demo.reset}
       resetDisabled={locked}
       stage={stage}

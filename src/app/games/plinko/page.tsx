@@ -10,7 +10,7 @@ import { RtpHistory } from "@/components/RtpHistory";
 import { useDemoSession, type DemoRound } from "@/lib/demo/session";
 import { useServerPlinko } from "@/lib/server/games";
 import { fmtRtp, useLiveConfig } from "@/lib/server/gameConfig";
-import { useMember } from "@/lib/useMember";
+import { playsReal, useMember } from "@/lib/useMember";
 import {
   PLINKO_CONFIG,
   PLINKO_SCALE,
@@ -53,8 +53,8 @@ export default function PlinkoPage() {
   const demo = useDemoSession();
   const member = useMember();
   // Members play on the server with the real wallet; visitors play the demo in the browser.
-  const real = member.status === "member";
-  const server = useServerPlinko(member.status === "member" ? member.profile.user_id : null);
+  const real = playsReal(member);
+  const server = useServerPlinko(real ? member.profile.user_id : null);
   const { config, refresh: refreshConfig } = useLiveConfig("plinko", PLINKO_CONFIG);
   const rtpBp = config.payout_model.target_rtp_bp;
   const ready = member.status !== "loading" && (real ? server.ready : demo.ready);
@@ -327,6 +327,7 @@ export default function PlinkoPage() {
       title="بلينكو"
       tint="#2fb5a8"
       real={real}
+      device={member.status === "member" ? member.device : undefined}
       onReset={demo.reset}
       resetDisabled={locked}
       stage={stage}

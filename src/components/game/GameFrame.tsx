@@ -4,6 +4,8 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { Ambient } from "@/components/fx/Ambient";
 import { useSound } from "@/lib/sound";
 import type { WinTier } from "@/lib/winTier";
+import { deviceNote } from "@/components/DeviceNotice";
+import type { DeviceStatus } from "@/lib/device";
 import styles from "./GameFrame.module.css";
 
 /**
@@ -21,6 +23,7 @@ export function GameFrame({
   rulesTitle,
   tint,
   real,
+  device,
 }: {
   title: string;
   onReset: () => void;
@@ -32,6 +35,7 @@ export function GameFrame({
   rulesTitle?: string;
   tint?: string; // the game's own colour, washed over the stage
   real?: boolean; // a member playing on the server with the real wallet (no demo reset)
+  device?: DeviceStatus; // a member's device; not approved means demo play with a notice
 }) {
   const sound = useSound();
   const [showRules, setShowRules] = useState(false);
@@ -92,7 +96,10 @@ export function GameFrame({
           </div>
         ) : (
           <div className={styles.footer}>
-            <span>النقاط هنا تجريبية وتبقى في متصفحك، والرصيد الحقيقي لا يتأثر.</span>
+            <span>
+              {device && device !== "approved" && device !== "unknown" && <>{deviceNote(device)} </>}
+              النقاط هنا تجريبية وتبقى في متصفحك، والرصيد الحقيقي لا يتأثر.
+            </span>
             <button type="button" className={styles.linkButton} onClick={onReset} disabled={resetDisabled}>
               إعادة الرصيد إلى <span className="num">1,000</span>
             </button>

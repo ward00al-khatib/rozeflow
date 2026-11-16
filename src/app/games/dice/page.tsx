@@ -413,6 +413,7 @@ export default function DicePage() {
   return (
     <GameFrame
       title="النرد"
+      music="dice"
       tint="#3ddcff"
       real={real}
       device={member.status === "member" ? member.device : undefined}

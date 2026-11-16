@@ -387,6 +387,7 @@ export default function MinesPage() {
   return (
     <GameFrame
       title="الألغام"
+      music="mines"
       tint="#3ecf8e"
       real={real}
       device={member.status === "member" ? member.device : undefined}

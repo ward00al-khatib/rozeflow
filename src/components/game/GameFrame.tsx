@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { Ambient } from "@/components/fx/Ambient";
-import { useSound } from "@/lib/sound";
+import { useMusic, useSound } from "@/lib/sound";
+import type { MusicTheme } from "@/lib/music";
 import type { WinTier } from "@/lib/winTier";
 import { deviceNote } from "@/components/DeviceNotice";
 import type { DeviceStatus } from "@/lib/device";
@@ -24,6 +25,7 @@ export function GameFrame({
   tint,
   real,
   device,
+  music,
 }: {
   title: string;
   onReset: () => void;
@@ -36,8 +38,10 @@ export function GameFrame({
   tint?: string; // the game's own colour, washed over the stage
   real?: boolean; // a member playing on the server with the real wallet (no demo reset)
   device?: DeviceStatus; // a member's device; not approved means demo play with a notice
+  music?: MusicTheme; // this game's background music
 }) {
   const sound = useSound();
+  const bgm = useMusic(music);
   const [showRules, setShowRules] = useState(false);
   return (
     <div className={styles.frame}>
@@ -67,6 +71,16 @@ export function GameFrame({
               </svg>
             )}
           </button>
+          {music && sound.on && (
+            <button type="button" className={styles.icon} onClick={bgm.toggle} aria-pressed={bgm.on} aria-label={bgm.on ? "إيقاف الموسيقى" : "تشغيل الموسيقى"}>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 17V6l10-2v11" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                <circle cx="6.5" cy="17" r="2.5" fill="currentColor" />
+                <circle cx="16.5" cy="15" r="2.5" fill="currentColor" />
+                {!bgm.on && <path d="M4 4l16 16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />}
+              </svg>
+            </button>
+          )}
           <button type="button" className={styles.icon} onClick={() => setShowRules(true)} aria-label="القواعد">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.8" />

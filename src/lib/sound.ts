@@ -4,8 +4,11 @@
  * Muted by default until the player turns sound on; the choice is kept in this browser.
  */
 import { useCallback, useEffect, useState } from "react";
+import { setMusic, type MusicTheme } from "./music";
 
 const KEY = "rozeflow:sound";
+const MUSIC_KEY = "rozeflow:music";
+let musicOn = true;
 let ctx: AudioContext | null = null;
 let enabled = false;
 const listeners = new Set<(on: boolean) => void>();
@@ -61,7 +64,25 @@ const SOUNDS: Record<SoundName, () => void> = {
   },
 };
 
+/** A light buzz on phones that support it (Android browsers; iPhone Safari ignores it). */
+const HAPTICS: Partial<Record<SoundName, number | number[]>> = {
+  win: 30,
+  cashout: 30,
+  bigWin: [40, 60, 40, 60, 80],
+};
+
+export function haptic(name: SoundName) {
+  const pattern = HAPTICS[name];
+  if (pattern === undefined || typeof navigator === "undefined" || !("vibrate" in navigator)) return;
+  try {
+    navigator.vibrate(pattern);
+  } catch {
+    /* not allowed before a tap: skip */
+  }
+}
+
 export function playSound(name: SoundName) {
+  haptic(name);
   if (!enabled) return;
   try {
     SOUNDS[name]();
@@ -75,6 +96,7 @@ export function useSound() {
   useEffect(() => {
     try {
       enabled = localStorage.getItem(KEY) === "on";
+      musicOn = localStorage.getItem(MUSIC_KEY) !== "off";
     } catch {
       /* storage blocked */
     }
@@ -96,4 +118,49 @@ export function useSound() {
     listeners.forEach((l) => l(enabled));
   }, []);
   return { on, toggle };
+}
+
+const musicListeners = new Set<(on: boolean) => void>();
+
+/**
+ * Background music for one game. Plays while sound is on, the music toggle is on and the tab is visible;
+ * fades out when the player leaves the game.
+ */
+export function useMusic(theme: MusicTheme | undefined) {
+  const { on: soundOn } = useSound();
+  const [music, setMusicOn] = useState(true);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    setMusicOn(musicOn);
+    musicListeners.add(setMusicOn);
+    const vis = () => setVisible(document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", vis);
+    return () => {
+      musicListeners.delete(setMusicOn);
+      document.removeEventListener("visibilitychange", vis);
+    };
+  }, []);
+
+  const playing = Boolean(theme && soundOn && music && visible);
+  useEffect(() => {
+    try {
+      setMusic(playing ? audio() : null, playing ? (theme ?? null) : null);
+    } catch {
+      /* audio blocked */
+    }
+  }, [playing, theme]);
+  useEffect(() => () => setMusic(null, null), []);
+
+  const toggle = useCallback(() => {
+    musicOn = !musicOn;
+    try {
+      localStorage.setItem(MUSIC_KEY, musicOn ? "on" : "off");
+    } catch {
+      /* storage blocked */
+    }
+    musicListeners.forEach((l) => l(musicOn));
+  }, []);
+
+  return { on: music, available: soundOn, toggle };
 }

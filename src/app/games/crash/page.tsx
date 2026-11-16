@@ -429,6 +429,7 @@ export default function CrashPage() {
   return (
     <GameFrame
       title="كراش"
+      music="crash"
       tint="#ff8a1f"
       real={real}
       device={member.status === "member" ? member.device : undefined}

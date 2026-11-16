@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 import type { MemberState } from "@/lib/useMember";
 import styles from "./Shell.module.css";
 
-export function Shell({ member, children }: { member: MemberState; children: ReactNode }) {
+export function Shell({ member, children, wide }: { member: MemberState; children: ReactNode; wide?: boolean }) {
   const signedIn = member.status === "member";
   return (
     <div className={styles.shell}>
@@ -25,7 +25,7 @@ export function Shell({ member, children }: { member: MemberState; children: Rea
           )}
         </nav>
       </header>
-      <main className={styles.main}>{children}</main>
+      <main className={`${styles.main} ${wide ? styles.wide : ""}`}>{children}</main>
     </div>
   );
 }

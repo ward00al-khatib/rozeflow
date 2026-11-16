@@ -1,10 +1,21 @@
 "use client";
 import { useState } from "react";
 import { commitServerSeed } from "@/lib/fairness/rng";
-import { revealedSeedFor, type DemoRound, type useDemoSession } from "@/lib/demo/session";
+import { revealedSeedFor, type DemoRound, type RevealedSeed } from "@/lib/demo/session";
 import styles from "./DemoFairness.module.css";
 
 type Seeds = { serverSeedHex: string; clientSeed: string; nonce: number };
+
+/** What the panel needs: the demo session in the browser, or the member's seeds on the server. */
+export interface FairnessSource {
+  rounds: DemoRound[];
+  revealed: RevealedSeed[];
+  serverSeedHash: string;
+  clientSeed: string;
+  nonce: number;
+  open: unknown;
+  rotateSeeds: (clientSeed: string) => void | Promise<void>;
+}
 
 /** Fairness panel (spec 6.3): commitment before play, reveal on rotation, re-check of past rounds. */
 export function DemoFairness({
@@ -12,12 +23,14 @@ export function DemoFairness({
   game,
   verify,
 }: {
-  demo: ReturnType<typeof useDemoSession>;
+  demo: FairnessSource;
   game: string;
   verify: (seeds: Seeds, round: DemoRound) => string;
 }) {
   const [nextClientSeed, setNextClientSeed] = useState("");
   const [checks, setChecks] = useState<Record<string, string>>({});
+  const [rotating, setRotating] = useState(false);
+  const [rotateError, setRotateError] = useState<string | null>(null);
 
   const verifiable = demo.rounds
     .filter((r) => r.game === game)
@@ -61,16 +74,25 @@ export function DemoFairness({
         <button
           type="button"
           className="btn-secondary"
-          disabled={!!demo.open}
+          disabled={!!demo.open || rotating}
           title={demo.open ? "أكمل الجولة المفتوحة أولاً" : undefined}
-          onClick={() => {
-            demo.rotateSeeds(nextClientSeed);
-            setNextClientSeed("");
+          onClick={async () => {
+            setRotating(true);
+            setRotateError(null);
+            try {
+              await demo.rotateSeeds(nextClientSeed);
+              setNextClientSeed("");
+            } catch (e) {
+              setRotateError(e instanceof Error ? e.message : "تعذّر تغيير البذرة.");
+            } finally {
+              setRotating(false);
+            }
           }}
         >
           اكشف البذرة وابدأ بذرة جديدة
         </button>
       </div>
+      {rotateError && <p className="error">{rotateError}</p>}
 
       {demo.revealed.length > 0 && (
         <>

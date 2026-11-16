@@ -39,7 +39,7 @@ export function AutoFields({ value, onChange, disabled }: { value: AutoSettings;
  * Plays rounds one after another. `playOnce` plays a round and returns its net (centi-points), or
  * null when it could not play (the run stops). `busy` is true while the round animates.
  */
-export function useAutoPlay(playOnce: () => number | null, busy: boolean, gapMs = 350) {
+export function useAutoPlay(playOnce: () => number | null | Promise<number | null>, busy: boolean, gapMs = 350) {
   const [running, setRunning] = useState(false);
   const [left, setLeft] = useState(0); // -1 = until stopped
   const [net, setNet] = useState(0);
@@ -62,8 +62,7 @@ export function useAutoPlay(playOnce: () => number | null, busy: boolean, gapMs 
       setRunning(false);
       return;
     }
-    const t = window.setTimeout(() => {
-      const r = fn.current();
+    const done = (r: number | null) => {
       if (r === null) {
         setRunning(false);
         return;
@@ -75,6 +74,12 @@ export function useAutoPlay(playOnce: () => number | null, busy: boolean, gapMs 
         if ((profit > 0 && total >= profit) || (loss > 0 && -total >= loss)) setRunning(false);
         return total;
       });
+    };
+    const t = window.setTimeout(() => {
+      // A server round answers later: the game is `busy` meanwhile, so no second round starts.
+      const r = fn.current();
+      if (r instanceof Promise) void r.then(done, () => setRunning(false));
+      else done(r);
     }, gapMs);
     return () => window.clearTimeout(t);
   }, [running, busy, left, gapMs]);

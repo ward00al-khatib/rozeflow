@@ -73,3 +73,7 @@
   margin: 0 0 12px;
   font-size: 18px;
 }
+
+.wide {
+  width: min(100%, 980px);
+}

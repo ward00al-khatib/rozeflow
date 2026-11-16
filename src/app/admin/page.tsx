@@ -14,6 +14,7 @@ interface GameRow {
   status: "enabled" | "paused" | "disabled";
   on_server: boolean;
   rtp_bp: number | null;
+  rtp_fixed?: boolean; // set by the game's structure (roulette), not adjustable
   config_version: number | null;
   rounds: number;
   players: number;
@@ -45,6 +46,7 @@ function actualRtp(wagered: number, paid: number): string {
 const ADMIN_ERRORS: Record<string, string> = {
   RTP_OUT_OF_RANGE: "النسبة يجب أن تكون بين 90% و99%.",
   GAME_NOT_ON_SERVER: "هذه اللعبة لم تُربط بالخادم بعد.",
+  RTP_FIXED: "عائد هذه اللعبة ثابت ببنيتها ولا يُغيَّر.",
   OWNER_ONLY: "هذا الإجراء للمالك فقط.",
 };
 
@@ -262,10 +264,18 @@ export default function AdminPage() {
                 <b>{g.name_ar}</b>
                 <span className="muted">
                   {!g.on_server ? "تجريبية حالياً، تُربط بالخادم لاحقاً" : g.status === "enabled" ? "تعمل" : "متوقفة مؤقتاً"}
+                  {g.on_server && g.rtp_fixed && g.rtp_bp ? (
+                    <>
+                      {" · العائد ثابت "}
+                      <span className="num">{(g.rtp_bp / 100).toFixed(2)}%</span>
+                    </>
+                  ) : null}
                 </span>
               </div>
               {g.on_server && (
                 <div className={styles.gameControls}>
+                  {!g.rtp_fixed && (
+                  <>
                   <span className={styles.rtpField}>
                     <input
                       className="num"
@@ -280,6 +290,8 @@ export default function AdminPage() {
                   <button type="button" className="btn-secondary" disabled={busy || !rtpText[g.game_id]} onClick={() => saveRtp(g)}>
                     حفظ العائد
                   </button>
+                  </>
+                  )}
                   <button type="button" className="btn-secondary" disabled={busy} onClick={() => toggleGame(g)}>
                     {g.status === "enabled" ? "إيقاف مؤقت" : "تشغيل"}
                   </button>

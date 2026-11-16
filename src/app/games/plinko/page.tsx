@@ -6,7 +6,11 @@ import { BarStatus, ControlBar } from "@/components/game/ControlBar";
 import { GameFrame, ResultStrip } from "@/components/game/GameFrame";
 import { WinBanner } from "@/components/game/WinBanner";
 import ui from "@/components/game/stage.module.css";
+import { RtpHistory } from "@/components/RtpHistory";
 import { useDemoSession, type DemoRound } from "@/lib/demo/session";
+import { useServerPlinko } from "@/lib/server/games";
+import { fmtRtp, useLiveConfig } from "@/lib/server/gameConfig";
+import { useMember } from "@/lib/useMember";
 import {
   PLINKO_CONFIG,
   PLINKO_SCALE,
@@ -47,6 +51,14 @@ function slotTone(m: number) {
 
 export default function PlinkoPage() {
   const demo = useDemoSession();
+  const member = useMember();
+  // Members play on the server with the real wallet; visitors play the demo in the browser.
+  const real = member.status === "member";
+  const server = useServerPlinko(member.status === "member" ? member.profile.user_id : null);
+  const { config, refresh: refreshConfig } = useLiveConfig("plinko", PLINKO_CONFIG);
+  const rtpBp = config.payout_model.target_rtp_bp;
+  const ready = member.status !== "loading" && (real ? server.ready : demo.ready);
+  const [waiting, setWaiting] = useState(false); // sent to the server, answer not here yet
   const [rows, setRows] = useState<PlinkoRows>(12);
   const [risk, setRisk] = useState<PlinkoRisk>("medium");
   const [stake, setStake] = useState(1000);
@@ -63,23 +75,44 @@ export default function PlinkoPage() {
   );
 
   const { min, max } = PLINKO_CONFIG.stake_limits;
-  const table = plinkoTable(risk, rows);
+  const table = plinkoTable(risk, rows, rtpBp);
   const dropping = drop !== null && drop.step < drop.round.bet.rows;
 
-  function dropOnce(): number | null {
+  function fail(e: unknown): null {
+    setWaiting(false);
+    setError(e instanceof Error ? e.message : "تعذّر اللعب.");
+    return null;
+  }
+
+  function dropOnce(): number | null | Promise<number | null> {
     setError(null);
     const bet: PlinkoBet = { stake, rows, risk };
-    let round: Round;
     try {
       validatePlinkoBet(bet);
-      round = demo.play("plinko", bet, stake, (seeds) => {
-        const outcome = playPlinko(seeds, bet);
-        return { outcome, gross: outcome.gross };
-      });
+      if (real) {
+        if (stake > server.balance) throw new Error("رصيدك لا يكفي لهذه الجولة.");
+        setWaiting(true);
+        return server.play(bet).then((round) => {
+          setWaiting(false);
+          // The owner may have changed the RTP since this page loaded: show the new table.
+          if (round.rtpBp !== rtpBp) refreshConfig();
+          return animate(round);
+        }, fail);
+      }
+      return animate(
+        demo.play("plinko", bet, stake, (seeds) => {
+          const outcome = playPlinko(seeds, bet, rtpBp);
+          return { outcome, gross: outcome.gross };
+        }),
+      );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "تعذّر اللعب.");
-      return null;
+      return fail(e);
     }
+  }
+
+  /** Drops the ball along the round's path; returns the round's net. */
+  function animate(round: Round): number {
+    const bet = round.bet;
     playSound("start");
     if (timer.current) window.clearInterval(timer.current);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -107,13 +140,14 @@ export default function PlinkoPage() {
     return round.gross - round.stake;
   }
 
-  const autoplay = useAutoPlay(dropOnce, dropping, turbo ? 120 : 380);
-  const locked = dropping || autoplay.running;
-  useSpaceKey(() => !locked && demo.ready && dropOnce(), true);
+  const busy = dropping || waiting;
+  const autoplay = useAutoPlay(dropOnce, busy, turbo ? 120 : 380);
+  const locked = busy || autoplay.running;
+  useSpaceKey(() => !locked && ready && dropOnce(), true);
 
   // Board geometry (SVG units). Row i has i + 3 pegs; slots sit under the last row.
   const shownRows = drop && dropping ? drop.round.bet.rows : rows;
-  const shownTable = drop && dropping ? plinkoTable(drop.round.bet.risk, drop.round.bet.rows) : table;
+  const shownTable = drop && dropping ? plinkoTable(drop.round.bet.risk, drop.round.bet.rows, rtpBp) : table;
   const W = 400;
   const gap = W / (shownRows + 2);
   const rowH = 300 / (shownRows + 1);
@@ -143,7 +177,8 @@ export default function PlinkoPage() {
     }
   }
 
-  const rounds = useMemo(() => demo.rounds.filter((r): r is Round => r.game === "plinko"), [demo.rounds]);
+  const allRounds = real ? server.rounds : demo.rounds;
+  const rounds = useMemo(() => allRounds.filter((r): r is Round => r.game === "plinko"), [allRounds]);
   const top = Math.max(...table);
 
   const stage = (
@@ -248,10 +283,11 @@ export default function PlinkoPage() {
 
   const panel = (
     <ControlBar
-      balance={demo.balance}
+      balance={real ? server.balance : demo.balance}
+      balanceLabel={real ? "رصيدك" : undefined}
       status={
-        error ? (
-          <span className="error">{error}</span>
+        error || (real && server.loadError) ? (
+          <span className="error">{error ?? server.loadError}</span>
         ) : (
           <BarStatus
             win={landed && landed.gross > 0 ? landed.gross : null}
@@ -276,12 +312,12 @@ export default function PlinkoPage() {
         net: autoplay.net,
         onStart: autoplay.start,
         onStop: autoplay.stop,
-        disabled: !demo.ready || dropping,
+        disabled: !ready || busy,
       }}
       primary={
         autoplay.running
           ? { kind: "stop", label: "إيقاف", onClick: autoplay.stop }
-          : { kind: "play", label: "أسقط الكرة", onClick: () => dropOnce(), disabled: !demo.ready || dropping, busy: dropping }
+          : { kind: "play", label: "أسقط الكرة", onClick: () => dropOnce(), disabled: !ready || busy, busy }
       }
     />
   );
@@ -290,6 +326,7 @@ export default function PlinkoPage() {
     <GameFrame
       title="بلينكو"
       tint="#2fb5a8"
+      real={real}
       onReset={demo.reset}
       resetDisabled={locked}
       stage={stage}
@@ -302,10 +339,12 @@ export default function PlinkoPage() {
           </p>
           <p>
             اختر عدد الصفوف (<span className="num">8</span> أو <span className="num">12</span> أو <span className="num">16</span>)
-            والمخاطرة. كل جدول عائده النظري <span className="num">99%</span>، والمخاطرة الأعلى تعني فرقاً أكبر بين الخانات.
+            والمخاطرة. كل جدول عائده النظري <span className="num">{fmtRtp(rtpBp)}%</span> لكل اللاعبين
+            (إصدار الإعدادات <span className="num">{config.config_version}</span>)، والمخاطرة الأعلى تعني فرقاً أكبر بين الخانات.
           </p>
           <p>اللعب التلقائي يُسقط كرات متتالية بنفس الإعدادات، ويتوقف عند الحدود التي تضعها.</p>
           <p>كل كرة تُحسب من بذور معلنة مسبقاً، ويمكنك التحقق منها في قسم «العدالة» أسفل الصفحة.</p>
+          <RtpHistory gameId="plinko" />
         </>
       }
       below={
@@ -347,10 +386,10 @@ export default function PlinkoPage() {
             )}
           </section>
           <DemoFairness
-            demo={demo}
+            demo={real ? server : demo}
             game="plinko"
             verify={(seeds, round) => {
-              const o = playPlinko(seeds, round.bet as PlinkoBet);
+              const o = playPlinko(seeds, round.bet as PlinkoBet, rtpBp);
               return `المسار ${o.path.map((x) => (x ? "يمين" : "يسار")).join("، ")} ← الخانة ${o.slot}`;
             }}
           />

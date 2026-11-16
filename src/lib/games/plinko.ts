@@ -27,10 +27,18 @@ export interface PlinkoOutcome {
 export const PLINKO_CONFIG = plinkoConfig;
 export const PLINKO_SCALE = plinkoConfig.payout_model.multiplier_scale;
 
-export function plinkoTable(risk: PlinkoRisk, rows: PlinkoRows): number[] {
+export const PLINKO_RTP_BP = plinkoConfig.payout_model.target_rtp_bp;
+
+/**
+ * The table for (risk, rows) at the given RTP. The published base tables are built for table_rtp_bp;
+ * when the owner sets another RTP every multiplier is scaled by rtp / table_rtp and floored
+ * (same rule as plinko_multiplier in SQL).
+ */
+export function plinkoTable(risk: PlinkoRisk, rows: PlinkoRows, rtpBp: number = PLINKO_RTP_BP): number[] {
   const t = (plinkoConfig.payout_model.multipliers as Record<string, Record<string, number[]>>)[risk]?.[String(rows)];
   if (!t || t.length !== rows + 1) throw new Error("جدول غير موجود لهذا الاختيار.");
-  return t;
+  const base = plinkoConfig.payout_model.table_rtp_bp;
+  return rtpBp === base ? t : t.map((m) => Math.floor((m * rtpBp) / base));
 }
 
 export function validatePlinkoBet(bet: PlinkoBet): void {
@@ -42,12 +50,12 @@ export function validatePlinkoBet(bet: PlinkoBet): void {
   if (!plinkoConfig.rules.risks.includes(bet.risk)) throw new Error("مستوى مخاطرة غير معروف.");
 }
 
-export function resolvePlinko(stream: RandomStream, bet: PlinkoBet): PlinkoOutcome {
+export function resolvePlinko(stream: RandomStream, bet: PlinkoBet, rtpBp: number = PLINKO_RTP_BP): PlinkoOutcome {
   validatePlinkoBet(bet);
   const path: number[] = [];
   for (let i = 0; i < bet.rows; i++) path.push(unbiasedInteger(stream, 2));
   const slot = path.reduce((a, b) => a + b, 0);
-  const multiplier = plinkoTable(bet.risk, bet.rows)[slot];
+  const multiplier = plinkoTable(bet.risk, bet.rows, rtpBp)[slot];
   const gross = Math.floor((bet.stake * multiplier) / PLINKO_SCALE);
   if (gross > plinkoConfig.payout_model.max_gross_payout) throw new Error("gross payout above the configured maximum");
   return { path, slot, multiplier, gross };
@@ -56,6 +64,7 @@ export function resolvePlinko(stream: RandomStream, bet: PlinkoBet): PlinkoOutco
 export function playPlinko(
   seeds: { serverSeedHex: string; clientSeed: string; nonce: number },
   bet: PlinkoBet,
+  rtpBp: number = PLINKO_RTP_BP,
 ): PlinkoOutcome {
-  return resolvePlinko(new RandomStream({ ...seeds, domain: gameDomain("plinko") }), bet);
+  return resolvePlinko(new RandomStream({ ...seeds, domain: gameDomain("plinko") }), bet, rtpBp);
 }

@@ -346,6 +346,7 @@ export default function RoulettePage() {
   return (
     <GameFrame
       title="الروليت"
+      music="roulette"
       tint="#b9405a"
       real={real}
       device={member.status === "member" ? member.device : undefined}

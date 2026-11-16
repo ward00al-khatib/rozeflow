@@ -325,6 +325,7 @@ export default function PlinkoPage() {
   return (
     <GameFrame
       title="بلينكو"
+      music="plinko"
       tint="#2fb5a8"
       real={real}
       device={member.status === "member" ? member.device : undefined}

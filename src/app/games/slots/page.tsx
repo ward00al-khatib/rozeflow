@@ -442,6 +442,7 @@ export default function SlotsPage() {
   return (
     <GameFrame
       title="السلوتس"
+      music="slots"
       real={real}
       device={member.status === "member" ? member.device : undefined}
       onReset={demo.reset}

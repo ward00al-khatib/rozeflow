@@ -2,6 +2,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Card, Shell } from "@/components/Shell";
+import { LevelBadge } from "@/components/social/LevelBadge";
+import { useMyStats } from "@/lib/social";
+import Link from "next/link";
 import { LEDGER_LABELS, availableDelta, formatPoints } from "@/lib/points";
 import { supabase } from "@/lib/supabase/client";
 import { useMember } from "@/lib/useMember";
@@ -41,6 +44,7 @@ export default function WalletPage() {
   }, [member.status, router]);
 
   const uid = member.status === "member" ? member.profile.user_id : null;
+  const stats = useMyStats(uid);
   useEffect(() => {
     if (!uid) return;
     const sb = supabase();
@@ -74,6 +78,15 @@ export default function WalletPage() {
         </div>
         <p className="muted">نقاط افتراضية للترفيه فقط، بلا أي قيمة مالية.</p>
       </Card>
+
+      {stats && (
+        <Card title="مستواك">
+          <LevelBadge wagered={stats.lifetime_wagered} progress />
+          <p className="muted">
+            يرتفع المستوى مع مجموع رهاناتك، ولا يغيّر فرص الفوز. <Link href="/leaderboard/">لوحة الصدارة</Link>
+          </p>
+        </Card>
+      )}
 
       <Card title="سجل الحركات">
         {error && <p className="error">{error}</p>}

@@ -6,6 +6,7 @@ import { Card, Shell } from "@/components/Shell";
 import { formatPoints } from "@/lib/points";
 import { siteUrl, supabase } from "@/lib/supabase/client";
 import { useMember } from "@/lib/useMember";
+import { BonusSetting } from "./BonusSetting";
 import { Devices } from "./Devices";
 import styles from "./admin.module.css";
 
@@ -305,6 +306,8 @@ export default function AdminPage() {
       </Card>
 
       <Devices />
+
+      <BonusSetting />
 
       <Card title="سجل تغييرات العائد">
         <RtpHistory reloadKey={logKey} />

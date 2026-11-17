@@ -37,6 +37,7 @@ export default function WalletPage() {
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [playerNo, setPlayerNo] = useState<number | null>(null);
 
   useEffect(() => {
     if (member.status === "signed_out") router.replace("/login/");
@@ -50,13 +51,15 @@ export default function WalletPage() {
     const sb = supabase();
     Promise.all([
       sb.from("wallet_accounts").select("available, reserved").eq("user_id", uid).single(),
+      sb.from("profiles").select("player_no").eq("user_id", uid).single(),
       sb.from("wallet_ledger")
         .select("id, type, amount, available_after, created_at, reason")
         .eq("user_id", uid)
         .order("id", { ascending: false })
         .limit(50),
-    ]).then(([w, l]) => {
+    ]).then(([w, p, l]) => {
       if (w.error || l.error) return setError("تعذّر تحميل المحفظة.");
+      if (!p.error && p.data) setPlayerNo((p.data as { player_no: number }).player_no);
       setWallet(w.data as Wallet);
       setRows((l.data ?? []) as LedgerRow[]);
     });
@@ -77,6 +80,11 @@ export default function WalletPage() {
           </div>
         </div>
         <p className="muted">نقاط افتراضية للترفيه فقط، بلا أي قيمة مالية.</p>
+        {playerNo !== null && (
+          <p className="muted">
+            رقمك في الموقع: <b className="num">{playerNo}</b>. أعطه لأحد الوكلاء ليرسل لك نقاطاً مجانية.
+          </p>
+        )}
       </Card>
 
       {stats && (

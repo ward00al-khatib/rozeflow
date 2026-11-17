@@ -348,3 +348,7 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.invite-member]
 verify_jwt = true
+
+# Called by signed-out visitors holding an invite code; the function checks the code itself.
+[functions.join-with-invite]
+verify_jwt = false

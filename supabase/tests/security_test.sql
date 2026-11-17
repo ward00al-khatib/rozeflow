@@ -102,7 +102,8 @@ end $$;
 select pg_temp.session('00000000-0000-0000-0000-0000000000b2', 'b3', 'friend-phone-key-0001');
 select pg_temp.expect_fail($$select public.play_dice(1000, 5000, 'under', 'reset-dice-000001')$$, 'DEVICE_NOT_APPROVED');
 
--- 5. Sweep: every SECURITY DEFINER function pins its search_path, none is callable by anon,
+-- 5. Sweep: every SECURITY DEFINER function pins its search_path, none is callable by anon
+--    (except check_invite_code, which the signed-out join page needs),
 --    and internal helpers are not callable by members either.
 do $$
 declare bad text;
@@ -115,7 +116,8 @@ begin
 
   select string_agg(p.oid::regprocedure::text, ', ') into bad
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-  where n.nspname = 'public' and p.prosecdef and has_function_privilege('anon', p.oid, 'execute');
+  where n.nspname = 'public' and p.prosecdef and has_function_privilege('anon', p.oid, 'execute')
+    and p.proname <> 'check_invite_code';
   if bad is not null then raise exception 'callable by anon: %', bad; end if;
 
   select string_agg(p.oid::regprocedure::text, ', ') into bad
@@ -123,7 +125,8 @@ begin
   where n.nspname = 'public' and has_function_privilege('authenticated', p.oid, 'execute')
     and p.proname in ('seed_key', 'seed_seal', 'seed_plain', 'ensure_seed_pair', 'take_nonce', 'round_rate_check',
                       'post_instant_round', 'post_round_start', 'post_round_end', 'round_replay', 'require_owner',
-                      'require_profile', 'request_ip', 'mines_advance', 'crash_advance');
+                      'require_profile', 'request_ip', 'mines_advance', 'crash_advance',
+                      'reserve_invite_code', 'finish_invite_code', 'invite_code_hash');
   if bad is not null then raise exception 'internal helper callable by members: %', bad; end if;
 end $$;
 

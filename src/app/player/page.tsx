@@ -8,6 +8,7 @@ import { formatPoints } from "@/lib/points";
 import { fmtMultiplier } from "@/lib/social";
 import { supabase } from "@/lib/supabase/client";
 import { useMember } from "@/lib/useMember";
+import { MyCoupons } from "./MyCoupons";
 import styles from "./player.module.css";
 
 interface GameStat {
@@ -190,6 +191,8 @@ export default function PlayerPage() {
           </b>
         </div>
       </div>
+
+      {profile.me && !member.agent && <MyCoupons />}
 
       <div className={styles.pair}>
         <Card title="أكبر فوز">

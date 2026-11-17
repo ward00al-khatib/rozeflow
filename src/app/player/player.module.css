@@ -163,3 +163,72 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* advertiser coupons (spec appendix ف) */
+.coupons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.coupons li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px dashed var(--rule);
+}
+
+.cOld {
+  opacity: 0.55;
+}
+
+.cLogo {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--smoke);
+  border: 1px solid var(--hair);
+  color: var(--ink-2);
+  font-weight: 800;
+}
+
+.cText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.cText small {
+  font-size: 12px;
+}
+
+.cAction {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cCode {
+  padding: 6px 10px;
+  border: 1px dashed var(--signal-2);
+  border-radius: 8px;
+  color: var(--signal-2);
+  user-select: all;
+}
+
+@media (max-width: 560px) {
+  .coupons li {
+    flex-wrap: wrap;
+  }
+  .cAction {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

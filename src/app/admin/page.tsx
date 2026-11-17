@@ -8,6 +8,7 @@ import { siteUrl, supabase } from "@/lib/supabase/client";
 import { useMember } from "@/lib/useMember";
 import { Agents } from "./Agents";
 import { BonusSetting } from "./BonusSetting";
+import { Coupons } from "./Coupons";
 import { Devices } from "./Devices";
 import { InviteLinks } from "./InviteLinks";
 import { Security } from "./Security";
@@ -328,6 +329,8 @@ export default function AdminPage() {
       <BonusSetting />
 
       <Agents />
+
+      <Coupons />
 
       <Card title="سجل تغييرات العائد">
         <RtpHistory reloadKey={logKey} />

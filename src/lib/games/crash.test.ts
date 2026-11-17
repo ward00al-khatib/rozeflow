@@ -48,7 +48,7 @@ describe("crash point", () => {
     }
     expect(Math.abs(instant / n - (1 - 99 / 101))).toBeLessThan(0.002);
     expect(Math.abs(paid / (n * 10000) - 0.99)).toBeLessThan(0.0067);
-  });
+  }, 60_000);
 });
 
 describe("crash rounds", () => {

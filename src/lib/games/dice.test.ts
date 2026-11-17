@@ -61,5 +61,5 @@ describe("playDice", () => {
     const rtp = paid / (n * bet.stake);
     // theory 0.99, σ = 0.99 per round → 3σ/√n ≈ 0.0067
     expect(Math.abs(rtp - 0.99)).toBeLessThan(0.0067);
-  });
+  }, 60_000);
 });

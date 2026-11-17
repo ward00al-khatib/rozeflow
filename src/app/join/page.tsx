@@ -6,6 +6,24 @@ import { supabase } from "@/lib/supabase/client";
 import { useMember } from "@/lib/useMember";
 import { TERMS } from "@/lib/terms";
 
+const INVITE_ERRORS: Record<string, string> = {
+  INVITE_INVALID: "رابط الدعوة لم يعد صالحاً. اطلب رابطاً جديداً.",
+  email_exists: "يوجد حساب بهذا البريد. ادخل من صفحة الدخول، أو استخدم بريداً آخر.",
+  invalid_email: "تأكد من كتابة البريد الإلكتروني.",
+  weak_password: "كلمة السر يجب أن تكون 10 أحرف على الأقل.",
+};
+
+/** The error code the join function returned, if any. */
+async function inviteError(err: unknown): Promise<string> {
+  try {
+    const res = (err as { context?: Response })?.context;
+    const body = res ? ((await res.json()) as { error?: string }) : null;
+    return body?.error ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export default function JoinPage() {
   const member = useMember();
   const router = useRouter();
@@ -15,10 +33,24 @@ export default function JoinPage() {
   const [terms, setTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [email, setEmail] = useState("");
+  // Invite link shared by the owner (spec appendix ن): ?code=… ; null = no code, undefined = not read yet.
+  const [code, setCode] = useState<string | null | undefined>(undefined);
+  const [codeOk, setCodeOk] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (member.status === "member") router.replace("/wallet/");
   }, [member.status, router]);
+
+  useEffect(() => {
+    const c = new URLSearchParams(window.location.search).get("code");
+    setCode(c);
+    if (c) {
+      void supabase()
+        .rpc("check_invite_code", { p_code: c })
+        .then(({ data }) => setCodeOk(data === true));
+    }
+  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -26,11 +58,28 @@ export default function JoinPage() {
     setBusy(true);
     setError(null);
     const sb = supabase();
-    const { error: pwError } = await sb.auth.updateUser({ password });
-    // An account created in the dashboard with a password may re-enter that same password here.
-    if (pwError && pwError.code !== "same_password") {
-      setBusy(false);
-      return setError("تعذّر حفظ كلمة السر. قد يكون رابط الدعوة منتهياً، فاطلب دعوة جديدة.");
+    if (member.status === "signed_out" && code) {
+      const { data, error: fnError } = await sb.functions.invoke("join-with-invite", {
+        body: { code, email: email.trim(), password },
+      });
+      if (fnError || !data?.ok) {
+        setBusy(false);
+        const why = await inviteError(fnError);
+        if (why === "INVITE_INVALID") setCodeOk(false);
+        return setError(INVITE_ERRORS[why] ?? "تعذّر إنشاء الحساب. حاول مرة أخرى بعد قليل.");
+      }
+      const { error: signInError } = await sb.auth.signInWithPassword({ email: email.trim(), password });
+      if (signInError) {
+        setBusy(false);
+        return setError("أُنشئ حسابك، لكن تعذّر الدخول. ادخل من صفحة الدخول بالبريد وكلمة السر.");
+      }
+    } else {
+      const { error: pwError } = await sb.auth.updateUser({ password });
+      // An account created in the dashboard with a password may re-enter that same password here.
+      if (pwError && pwError.code !== "same_password") {
+        setBusy(false);
+        return setError("تعذّر حفظ كلمة السر. قد يكون رابط الدعوة منتهياً، فاطلب دعوة جديدة.");
+      }
     }
     const { error: joinError } = await sb.rpc("complete_join", {
       p_display_name: name,
@@ -44,24 +93,41 @@ export default function JoinPage() {
 
   if (member.status === "loading") return <Shell member={member}><p className="muted">لحظة…</p></Shell>;
 
-  if (member.status === "signed_out") {
+  const withCode = member.status === "signed_out";
+  if (withCode && (!code || codeOk === false)) {
     return (
       <Shell member={member}>
         <Card title="الانضمام">
-          <p>افتح هذه الصفحة من رابط الدعوة الذي وصلك بالبريد. الرابط صالح لمرة واحدة.</p>
+          <p>
+            {code
+              ? "رابط الدعوة هذا لم يعد صالحاً: استُخدم من قبل، أو ألغاه المالك، أو انتهت مدته. اطلب رابطاً جديداً."
+              : "افتح هذه الصفحة من رابط الدعوة الذي وصلك. الرابط صالح لمرة واحدة."}
+          </p>
         </Card>
       </Shell>
     );
   }
+  if (withCode && codeOk === null) return <Shell member={member}><p className="muted">لحظة…</p></Shell>;
 
   return (
     <Shell member={member}>
       <Card title="أهلاً بك في ROZEFLOW">
         <p className="muted">
-          الدعوة لـ <span className="num">{member.status !== "member" ? member.session.user.email : ""}</span>. اختر اسماً
-          يظهر لأصدقائك، وكلمة سر للدخول لاحقاً.
+          {member.status === "needs_join" && (
+            <>
+              الدعوة لـ <span className="num">{member.session.user.email}</span>.{" "}
+            </>
+          )}
+          اختر اسماً يظهر لأصدقائك، وكلمة سر للدخول لاحقاً.
         </p>
         <form onSubmit={onSubmit}>
+          {withCode && (
+            <div className="field">
+              <label htmlFor="email">بريدك الإلكتروني (للدخول فقط، لا نرسل إليه شيئاً)</label>
+              <input id="email" className="input" type="email" dir="ltr" autoComplete="email" required
+                value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+          )}
           <div className="field">
             <label htmlFor="name">الاسم الظاهر</label>
             <input id="name" className="input" minLength={2} maxLength={32} required

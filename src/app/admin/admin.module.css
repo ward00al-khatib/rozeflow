@@ -256,3 +256,18 @@
 .plain li {
   padding: 4px 0;
 }
+
+.fresh {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid var(--rule);
+  border-inline-start: 3px solid var(--signal-2);
+  border-radius: 12px;
+}
+
+.linkBox {
+  font-size: 13px;
+  text-align: left;
+}

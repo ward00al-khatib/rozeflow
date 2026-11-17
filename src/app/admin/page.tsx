@@ -8,6 +8,7 @@ import { siteUrl, supabase } from "@/lib/supabase/client";
 import { useMember } from "@/lib/useMember";
 import { BonusSetting } from "./BonusSetting";
 import { Devices } from "./Devices";
+import { InviteLinks } from "./InviteLinks";
 import { Security } from "./Security";
 import { OwnerMfaCard, useOwnerMfa } from "./OwnerMfa";
 import styles from "./admin.module.css";
@@ -327,7 +328,10 @@ export default function AdminPage() {
         <RtpHistory reloadKey={logKey} />
       </Card>
 
-      <Card title="دعوة صديق">
+      <InviteLinks />
+
+      <Card title="دعوة بالبريد">
+        <p className="muted">البريد المجاني يرسل نحو رسالتين في الساعة، لذلك روابط الدعوة أعلاه أسهل.</p>
         <form onSubmit={invite}>
           <div className="field">
             <label htmlFor="email">بريده الإلكتروني</label>

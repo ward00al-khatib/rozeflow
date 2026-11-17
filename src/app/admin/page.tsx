@@ -8,6 +8,7 @@ import { siteUrl, supabase } from "@/lib/supabase/client";
 import { useMember } from "@/lib/useMember";
 import { BonusSetting } from "./BonusSetting";
 import { Devices } from "./Devices";
+import { Security } from "./Security";
 import { OwnerMfaCard, useOwnerMfa } from "./OwnerMfa";
 import styles from "./admin.module.css";
 
@@ -316,6 +317,8 @@ export default function AdminPage() {
         {gameMsg && <p className={gameMsg.ok ? "success" : "error"}>{gameMsg.text}</p>}
       </Card>
 
+      <Security />
+
       <Devices />
 
       <BonusSetting />
@@ -347,7 +350,7 @@ export default function AdminPage() {
               <span>
                 {m.display_name}
                 {m.role === "owner" && <span className="muted"> · المالك</span>}
-                {m.status !== "active" && <span className="muted"> · {m.status}</span>}
+                {m.status !== "active" && <span className="muted"> · {m.status === "paused" ? "موقوف" : m.status}</span>}
               </span>
               <span className="num muted">{m.wallet_accounts ? formatPoints(m.wallet_accounts.available) : "—"}</span>
             </li>

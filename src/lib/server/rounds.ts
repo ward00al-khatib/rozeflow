@@ -16,6 +16,7 @@ const ERRORS: Record<string, string> = {
   DEVICE_NOT_APPROVED: "هذا الجهاز ينتظر موافقة المالك.",
   DEVICE_BLOCKED: "أوقف المالك اللعب من هذا الجهاز.",
   DEVICE_UNKNOWN: "لم يُسجَّل هذا الجهاز بعد. أعد تحميل الصفحة.",
+  RATE_LIMITED: "تمهّل قليلاً: جولات كثيرة في ثوانٍ قليلة. حاول بعد لحظات.",
   STAKE_OUT_OF_RANGE: "قيمة الدخول خارج الحدود المسموحة.",
   BAD_BET: "اختيار غير صالح.",
   CLIENT_SEED_TOO_LONG: "البذرة أطول من 64 حرفاً.",

@@ -10,6 +10,9 @@ create function pg_temp.as_user(uid text) returns void language plpgsql as $$
 begin
   perform set_config('request.jwt.claim.sub', uid, true);
   perform set_config('request.jwt.claims', jsonb_build_object('sub', uid, 'session_id', 'sess-' || uid, 'aal', 'aal2')::text, true);
+  -- a test transaction has one now(), so every round looks simultaneous: lift the rate limit
+  insert into public.site_settings (key, value) values ('round_rate_limit', '1000000')
+  on conflict (key) do update set value = excluded.value;
   if uid <> '' then perform public.register_device('device-key-' || replace(uid, '-', ''), 'test'); end if;
 end $$;
 
@@ -73,6 +76,10 @@ begin
   if (st->>'nonce')::int <> 0 or st ? 'server_seed' then raise exception 'bad seed state %', st; end if;
   r := public.play_dice(2000, 5000, 'under', 'key-round-0001');
   select server_seed_enc into seed from public.seed_pairs where id = (st->>'seed_pair_id')::uuid;
+  -- stored sealed (spec appendix م): never the plain seed
+  if seed not like 'v1:%' or position(public.seed_plain(seed) in seed) > 0 then raise exception 'seed stored in the clear'; end if;
+  seed := public.seed_plain(seed);
+  if length(seed) <> 64 then raise exception 'seed_plain must give the 32-byte hex seed'; end if;
   roll := public.fair_integer(seed, st->>'client_seed', 0, 'rozeflow:v1:dice', 10000);
   if (r->>'roll')::int <> roll then raise exception 'roll % <> %', r->>'roll', roll; end if;
   if (r->>'multiplier')::int <> 19800 then raise exception 'multiplier %', r->>'multiplier'; end if;

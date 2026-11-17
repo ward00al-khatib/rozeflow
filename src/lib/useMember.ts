@@ -19,7 +19,11 @@ export type MemberState =
 
 /** Members play with real points only from a device the owner approved (spec appendix ط). */
 export function playsReal(member: MemberState): member is Extract<MemberState, { status: "member" }> {
-  return member.status === "member" && (member.device === "approved" || member.device === "unknown");
+  return (
+    member.status === "member" &&
+    member.profile.status === "active" &&
+    (member.device === "approved" || member.device === "unknown")
+  );
 }
 
 /** Current visitor: signed out, invited but not joined yet, or a member with a profile. */

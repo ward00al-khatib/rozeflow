@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Card, Shell } from "@/components/Shell";
 import { supabase } from "@/lib/supabase/client";
 import { useMember } from "@/lib/useMember";
+import { loginEmail } from "@/lib/username";
 
 export default function LoginPage() {
   const member = useMember();
@@ -22,9 +23,9 @@ export default function LoginPage() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const { error } = await supabase().auth.signInWithPassword({ email: email.trim(), password });
+    const { error } = await supabase().auth.signInWithPassword({ email: loginEmail(email), password });
     setBusy(false);
-    if (error) setError("البريد أو كلمة السر غير صحيحة.");
+    if (error) setError("اسم المستخدم أو كلمة السر غير صحيحة.");
   }
 
   return (
@@ -32,8 +33,8 @@ export default function LoginPage() {
       <Card title="الدخول">
         <form onSubmit={onSubmit}>
           <div className="field">
-            <label htmlFor="email">البريد الإلكتروني</label>
-            <input id="email" className="input" type="email" dir="ltr" autoComplete="email" required
+            <label htmlFor="email">اسم المستخدم (أو البريد للحسابات القديمة)</label>
+            <input id="email" className="input" dir="ltr" autoComplete="username" autoCapitalize="none" spellCheck={false} required
               value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div className="field">

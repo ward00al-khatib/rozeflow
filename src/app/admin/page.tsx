@@ -60,6 +60,7 @@ interface MemberRow {
   user_id: string;
   player_no: number | null;
   display_name: string;
+  username: string | null;
   role: string;
   status: string;
   created_at: string;
@@ -92,7 +93,7 @@ export default function AdminPage() {
   const loadMembers = useCallback(async () => {
     const { data } = await supabase()
       .from("profiles")
-      .select("user_id, player_no, display_name, role, status, created_at, wallet_accounts(available, reserved)")
+      .select("user_id, player_no, display_name, username, role, status, created_at, wallet_accounts(available, reserved)")
       .order("created_at");
     setMembers((data ?? []) as unknown as MemberRow[]);
   }, []);
@@ -358,6 +359,7 @@ export default function AdminPage() {
               <span>
                 {m.display_name}
                 {m.player_no !== null && <span className="num muted">{"\u00a0#"}{m.player_no}</span>}
+                {m.username && <span className="muted num" dir="ltr">{"\u00a0@"}{m.username}</span>}
                 {m.role === "owner" && <span className="muted"> · المالك</span>}
                 {m.status !== "active" && <span className="muted"> · {m.status === "paused" ? "موقوف" : m.status}</span>}
               </span>

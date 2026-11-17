@@ -391,6 +391,7 @@ export default function MinesPage() {
       tint="#3ecf8e"
       real={real}
       device={member.status === "member" ? member.device : undefined}
+      agent={member.status === "member" && member.agent}
       onReset={demo.reset}
       resetDisabled={playing}
       stage={stage}

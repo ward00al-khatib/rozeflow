@@ -350,6 +350,7 @@ export default function RoulettePage() {
       tint="#b9405a"
       real={real}
       device={member.status === "member" ? member.device : undefined}
+      agent={member.status === "member" && member.agent}
       onReset={demo.reset}
       resetDisabled={locked}
       stage={stage}

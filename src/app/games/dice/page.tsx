@@ -417,6 +417,7 @@ export default function DicePage() {
       tint="#3ddcff"
       real={real}
       device={member.status === "member" ? member.device : undefined}
+      agent={member.status === "member" && member.agent}
       onReset={demo.reset}
       resetDisabled={locked}
       stage={stage}

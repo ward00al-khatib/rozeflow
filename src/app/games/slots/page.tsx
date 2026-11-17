@@ -445,6 +445,7 @@ export default function SlotsPage() {
       music="slots"
       real={real}
       device={member.status === "member" ? member.device : undefined}
+      agent={member.status === "member" && member.agent}
       onReset={demo.reset}
       resetDisabled={busy || autoplay.running}
       rulesTitle="مختبر الليل: الجدول والقواعد"

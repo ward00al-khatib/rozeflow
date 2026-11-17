@@ -22,6 +22,7 @@ export function playsReal(member: MemberState): member is Extract<MemberState, {
   return (
     member.status === "member" &&
     member.profile.status === "active" &&
+    !member.agent && // agents only hand out points; they never play (spec appendix س)
     (member.device === "approved" || member.device === "unknown")
   );
 }

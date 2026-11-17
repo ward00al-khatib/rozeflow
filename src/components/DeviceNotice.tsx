@@ -12,6 +12,13 @@ export function deviceNote(device: DeviceStatus): string {
 /** A banner for members on a device the owner has not approved (spec appendix ط). */
 export function DeviceNotice({ member }: { member: MemberState }) {
   if (member.status !== "member") return null;
+  if (member.agent) {
+    return (
+      <p className={styles.notice} role="status">
+        هذا حساب وكيل: لا يلعب بالرصيد الحقيقي ولا يأخذ المكافأة، وعمله توزيع النقاط المجانية من صفحة الوكالة.
+      </p>
+    );
+  }
   if (member.profile.status !== "active") {
     return (
       <p className={styles.notice} role="status">

@@ -107,7 +107,7 @@ export function Agents() {
           </div>
           <div className={styles.tile}>
             <span>وُزّع على اللاعبين</span>
-            <b className="num">{formatPoints(data.totals.gifted)}</b>
+            <b className="num">{formatPoints(data.totals.gifted - (data.totals.cancelled ?? 0))}</b>
           </div>
           <div className={styles.tile}>
             <span>باقٍ مع الوكلاء</span>

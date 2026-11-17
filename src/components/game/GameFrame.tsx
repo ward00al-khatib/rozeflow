@@ -25,6 +25,7 @@ export function GameFrame({
   tint,
   real,
   device,
+  agent,
   music,
 }: {
   title: string;
@@ -38,6 +39,7 @@ export function GameFrame({
   tint?: string; // the game's own colour, washed over the stage
   real?: boolean; // a member playing on the server with the real wallet (no demo reset)
   device?: DeviceStatus; // a member's device; not approved means demo play with a notice
+  agent?: boolean; // agent accounts never play with real points (spec appendix س)
   music?: MusicTheme; // this game's background music
 }) {
   const sound = useSound();
@@ -111,7 +113,8 @@ export function GameFrame({
         ) : (
           <div className={styles.footer}>
             <span>
-              {device && device !== "approved" && device !== "unknown" && <>{deviceNote(device)} </>}
+              {agent ? <>حساب الوكيل لا يلعب بالرصيد الحقيقي. </> :
+                device && device !== "approved" && device !== "unknown" && <>{deviceNote(device)} </>}
               النقاط هنا تجريبية وتبقى في متصفحك، والرصيد الحقيقي لا يتأثر.
             </span>
             <button type="button" className={styles.linkButton} onClick={onReset} disabled={resetDisabled}>

@@ -433,6 +433,7 @@ export default function CrashPage() {
       tint="#ff8a1f"
       real={real}
       device={member.status === "member" ? member.device : undefined}
+      agent={member.status === "member" && member.agent}
       onReset={demo.reset}
       resetDisabled={locked}
       stage={stage}

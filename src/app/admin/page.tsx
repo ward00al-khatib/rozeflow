@@ -8,6 +8,7 @@ import { siteUrl, supabase } from "@/lib/supabase/client";
 import { useMember } from "@/lib/useMember";
 import { BonusSetting } from "./BonusSetting";
 import { Devices } from "./Devices";
+import { OwnerMfaCard, useOwnerMfa } from "./OwnerMfa";
 import styles from "./admin.module.css";
 
 interface GameRow {
@@ -80,7 +81,9 @@ export default function AdminPage() {
     if (member.status === "needs_join") router.replace("/join/");
   }, [member.status, router]);
 
-  const isOwner = member.status === "member" && member.profile.role === "owner";
+  const ownerAccount = member.status === "member" && member.profile.role === "owner";
+  const mfa = useOwnerMfa(ownerAccount);
+  const isOwner = ownerAccount && mfa.ok;
 
   const loadMembers = useCallback(async () => {
     const { data } = await supabase()
@@ -160,6 +163,14 @@ export default function AdminPage() {
   }
 
   if (member.status !== "member") return <Shell member={member}><p className="muted">لحظة…</p></Shell>;
+
+  if (ownerAccount && !mfa.ok) {
+    return (
+      <Shell member={member}>
+        <OwnerMfaCard mfa={mfa} />
+      </Shell>
+    );
+  }
 
   if (!isOwner) {
     return (

@@ -10,7 +10,7 @@ insert into auth.users (id) values
 create function pg_temp.session(uid text, sess text) returns void language plpgsql as $$
 begin
   perform set_config('request.jwt.claim.sub', uid, true);
-  perform set_config('request.jwt.claims', jsonb_build_object('sub', uid, 'session_id', sess)::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', uid, 'session_id', sess, 'aal', 'aal2')::text, true);
 end $$;
 
 create function pg_temp.expect_fail(stmt text, code text) returns void language plpgsql as $$

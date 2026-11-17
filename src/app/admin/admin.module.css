@@ -271,3 +271,13 @@
   font-size: 13px;
   text-align: left;
 }
+
+.holders {
+  flex-basis: 100%;
+}
+
+.games .holders li {
+  display: block;
+  padding: 4px 0;
+  border-top: 0;
+}

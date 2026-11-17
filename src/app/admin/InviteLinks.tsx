@@ -11,6 +11,8 @@ interface LinkRow {
   expires_at: string;
   used_at: string | null;
   used_by_name: string | null;
+  by_agent?: boolean;
+  created_by_name?: string;
   status: "open" | "used" | "revoked" | "expired";
 }
 
@@ -146,6 +148,7 @@ export function InviteLinks() {
                 <b>{l.note ?? "رابط بلا ملاحظة"}</b>
                 <span className="muted">
                   {STATUS[l.status]}
+                  {l.by_agent && <> · من الوكيل {l.created_by_name}</>}
                   {l.status === "used" && l.used_by_name && <> · انضم {l.used_by_name}</>}
                   {l.status === "open" && <> · حتى {when(l.expires_at)}</>}
                 </span>

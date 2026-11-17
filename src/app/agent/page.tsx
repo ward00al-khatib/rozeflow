@@ -16,6 +16,7 @@ import { formatPoints } from "@/lib/points";
 import { supabase } from "@/lib/supabase/client";
 import { useMember } from "@/lib/useMember";
 import admin from "../admin/admin.module.css";
+import { AgentInvites } from "./AgentInvites";
 import styles from "./agent.module.css";
 
 type Msg = { ok: boolean; text: string } | null;
@@ -90,6 +91,8 @@ export default function AgentPage() {
       </Card>
 
       {canAct && <SendCard allowance={dash.allowance} onDone={load} />}
+
+      <AgentInvites canAct={canAct} />
 
       {dash.tier === "master" && <SubsCard subs={dash.subs} canAct={canAct} onDone={load} />}
 

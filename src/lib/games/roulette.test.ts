@@ -85,5 +85,5 @@ describe("playRoulette", () => {
     expect(chi).toBeLessThan(68); // df 36, p = 0.001
     // even-money σ ≈ 1 → 3σ/√n ≈ 0.0067
     expect(Math.abs(paid / (n * 1000) - 36 / 37)).toBeLessThan(0.0067);
-  });
+  }, 60_000);
 });

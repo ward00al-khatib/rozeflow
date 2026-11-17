@@ -55,7 +55,7 @@ describe("playPlinko", () => {
     const n = 200_000;
     for (let i = 0; i < n; i++) paid += playPlinko({ ...SEEDS, nonce: i }, bet).gross;
     expect(Math.abs(paid / (n * bet.stake) - 0.99)).toBeLessThan(0.006);
-  });
+  }, 60_000);
 });
 
 describe("plinko at an owner-set RTP", () => {

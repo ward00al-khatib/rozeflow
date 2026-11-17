@@ -10,6 +10,9 @@ create function pg_temp.as_user(uid text) returns void language plpgsql as $$
 begin
   perform set_config('request.jwt.claim.sub', uid, true);
   perform set_config('request.jwt.claims', jsonb_build_object('sub', uid, 'session_id', 'sess-' || uid, 'aal', 'aal2')::text, true);
+  -- a test transaction has one now(), so every round looks simultaneous: lift the rate limit
+  insert into public.site_settings (key, value) values ('round_rate_limit', '1000000')
+  on conflict (key) do update set value = excluded.value;
   if uid <> '' then perform public.register_device('device-key-' || replace(uid, '-', ''), 'test'); end if;
 end $$;
 
@@ -22,7 +25,7 @@ end $$;
 -- Test only: a fresh seed pair with a known seed, and extra points through the ledger.
 create function pg_temp.use_seed(p_seed text, p_client text, p_nonce bigint) returns void language plpgsql as $$
 begin
-  update public.seed_pairs set status = 'revealed', server_seed_revealed = server_seed_enc, revealed_at = now()
+  update public.seed_pairs set status = 'revealed', server_seed_revealed = public.seed_plain(server_seed_enc), revealed_at = now()
    where user_id = auth.uid() and status = 'active';
   insert into public.seed_pairs (user_id, server_seed_enc, server_seed_hash, client_seed, next_nonce)
   values (auth.uid(), p_seed, encode(sha256(decode(p_seed, 'hex')), 'hex'), p_client, p_nonce);

@@ -10,6 +10,9 @@ create function pg_temp.as_user(uid text) returns void language plpgsql as $$
 begin
   perform set_config('request.jwt.claim.sub', uid, true);
   perform set_config('request.jwt.claims', jsonb_build_object('sub', uid, 'session_id', 'sess-' || uid, 'aal', 'aal2')::text, true);
+  -- a test transaction has one now(), so every round looks simultaneous: lift the rate limit
+  insert into public.site_settings (key, value) values ('round_rate_limit', '1000000')
+  on conflict (key) do update set value = excluded.value;
   if uid <> '' then perform public.register_device('device-key-' || replace(uid, '-', ''), 'test'); end if;
 end $$;
 

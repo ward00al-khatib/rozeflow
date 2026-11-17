@@ -5,11 +5,12 @@ import { Card, Shell } from "@/components/Shell";
 import { supabase } from "@/lib/supabase/client";
 import { useMember } from "@/lib/useMember";
 import { TERMS } from "@/lib/terms";
+import { loginEmail, normalizeUsername, USERNAME_RE, usernameOf } from "@/lib/username";
 
 const INVITE_ERRORS: Record<string, string> = {
   INVITE_INVALID: "رابط الدعوة لم يعد صالحاً. اطلب رابطاً جديداً.",
-  email_exists: "يوجد حساب بهذا البريد. ادخل من صفحة الدخول، أو استخدم بريداً آخر.",
-  invalid_email: "تأكد من كتابة البريد الإلكتروني.",
+  username_taken: "اسم المستخدم هذا مأخوذ. اختر اسماً آخر.",
+  bad_username: "اسم المستخدم من 3 إلى 20 حرفاً: أحرف إنجليزية صغيرة أو أرقام أو _ فقط.",
   weak_password: "كلمة السر يجب أن تكون 10 أحرف على الأقل.",
 };
 
@@ -33,7 +34,7 @@ export default function JoinPage() {
   const [terms, setTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   // Invite link shared by the owner (spec appendix ن): ?code=… ; null = no code, undefined = not read yet.
   const [code, setCode] = useState<string | null | undefined>(undefined);
   const [codeOk, setCodeOk] = useState<boolean | null>(null);
@@ -55,12 +56,15 @@ export default function JoinPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (password.length < 10) return setError("كلمة السر يجب أن تكون 10 أحرف على الأقل.");
+    if (member.status === "signed_out" && !USERNAME_RE.test(normalizeUsername(username))) {
+      return setError(INVITE_ERRORS.bad_username);
+    }
     setBusy(true);
     setError(null);
     const sb = supabase();
     if (member.status === "signed_out" && code) {
       const { data, error: fnError } = await sb.functions.invoke("join-with-invite", {
-        body: { code, email: email.trim(), password },
+        body: { code, username: normalizeUsername(username), password },
       });
       if (fnError || !data?.ok) {
         setBusy(false);
@@ -68,10 +72,10 @@ export default function JoinPage() {
         if (why === "INVITE_INVALID") setCodeOk(false);
         return setError(INVITE_ERRORS[why] ?? "تعذّر إنشاء الحساب. حاول مرة أخرى بعد قليل.");
       }
-      const { error: signInError } = await sb.auth.signInWithPassword({ email: email.trim(), password });
+      const { error: signInError } = await sb.auth.signInWithPassword({ email: loginEmail(username), password });
       if (signInError) {
         setBusy(false);
-        return setError("أُنشئ حسابك، لكن تعذّر الدخول. ادخل من صفحة الدخول بالبريد وكلمة السر.");
+        return setError("أُنشئ حسابك، لكن تعذّر الدخول. ادخل من صفحة الدخول باسم المستخدم وكلمة السر.");
       }
     } else {
       const { error: pwError } = await sb.auth.updateUser({ password });
@@ -115,7 +119,7 @@ export default function JoinPage() {
         <p className="muted">
           {member.status === "needs_join" && (
             <>
-              الدعوة لـ <span className="num">{member.session.user.email}</span>.{" "}
+              الدعوة لـ <span className="num">{usernameOf(member.session.user.email) ?? member.session.user.email}</span>.{" "}
             </>
           )}
           اختر اسماً يظهر لأصدقائك، وكلمة سر للدخول لاحقاً.
@@ -123,9 +127,10 @@ export default function JoinPage() {
         <form onSubmit={onSubmit}>
           {withCode && (
             <div className="field">
-              <label htmlFor="email">بريدك الإلكتروني (للدخول فقط، لا نرسل إليه شيئاً)</label>
-              <input id="email" className="input" type="email" dir="ltr" autoComplete="email" required
-                value={email} onChange={(e) => setEmail(e.target.value)} />
+              <label htmlFor="username">اسم المستخدم للدخول (3 إلى 20: أحرف إنجليزية، أرقام، _)</label>
+              <input id="username" className="input" dir="ltr" autoComplete="username" autoCapitalize="none"
+                spellCheck={false} required minLength={3} maxLength={20} pattern="[A-Za-z0-9_]{3,20}"
+                value={username} onChange={(e) => setUsername(e.target.value.replace(/[^A-Za-z0-9_]/g, ""))} />
             </div>
           )}
           <div className="field">

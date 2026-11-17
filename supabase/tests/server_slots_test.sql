@@ -9,7 +9,7 @@ insert into auth.users (id) values
 create function pg_temp.as_user(uid text) returns void language plpgsql as $$
 begin
   perform set_config('request.jwt.claim.sub', uid, true);
-  perform set_config('request.jwt.claims', jsonb_build_object('sub', uid, 'session_id', 'sess-' || uid)::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', uid, 'session_id', 'sess-' || uid, 'aal', 'aal2')::text, true);
   if uid <> '' then perform public.register_device('device-key-' || replace(uid, '-', ''), 'test'); end if;
 end $$;
 

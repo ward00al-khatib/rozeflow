@@ -8,6 +8,7 @@
 - RTP is set per game by the owner in /admin (set_game_rtp, 90–99%), effective immediately for new rounds only (spec appendix ح). Each change is a new game_config_versions row; never edit an existing version.
 - Server rounds are SQL functions in one transaction (play_dice). The SQL RNG (fair_block / fair_integer) must stay byte-identical to rng.ts; supabase/tests/server_rounds_test.sql checks it against vectors from the TypeScript code.
 - Devices (spec appendix ط): require_member() also needs the session's device approved (register_device binds JWT session_id to a hashed browser key). SQL tests sign in through pg_temp.as_user, which registers a device.
+- Owner powers need a two-factor session (spec appendix ل): is_owner() = owner role + JWT aal2; is_owner_account() ignores aal (UI and bootstrap only). SQL tests sign in with aal2.
 - Brand: spec section 23. Orange buttons take navy text; cyan for one key element per screen; numbers use the .num class (JetBrains Mono); loss is muted grey, not red.
 - Before pushing: npm run lint && npm run typecheck && npm test && npm run build, plus npm run test:db when SQL changes.
 - Supabase project ref: mozhdjtszorqrzuynqne (public URL/key in src/lib/supabase/config.ts). This sandbox cannot reach supabase.co or github.io; migrations reach production only through .github/workflows/supabase.yml on merge to main.

@@ -28,6 +28,7 @@ export default function AgentPage() {
   const member = useMember();
   const router = useRouter();
   const [dash, setDash] = useState<AgentDashboard | null | undefined>(undefined);
+  const [logMsg, setLogMsg] = useState<Msg>(null);
 
   useEffect(() => {
     if (member.status === "signed_out") router.replace("/login/");
@@ -59,6 +60,13 @@ export default function AgentPage() {
   }
 
   const canAct = dash.status === "active" && dash.parent_active;
+
+  async function cancelGift(ref: string, name: string, amount: number) {
+    if (!window.confirm(`إلغاء هدية ${formatPoints(amount)} نقطة إلى ${name}؟ تعود النقاط إلى حصتك.`)) return;
+    const { error } = await supabase().rpc("agent_cancel_gift", { p_ref: ref });
+    setLogMsg(error ? { ok: false, text: agentError(error.message) } : { ok: true, text: "أُلغيت الهدية وعادت النقاط إلى حصتك." });
+    void load();
+  }
 
   return (
     <Shell member={member}>
@@ -97,6 +105,10 @@ export default function AgentPage() {
       {dash.tier === "master" && <SubsCard subs={dash.subs} canAct={canAct} onDone={load} />}
 
       <Card title="سجل حركات الحصة">
+        <p className={`muted ${admin.note}`}>
+          أخطأت في هدية؟ تستطيع إلغاءها خلال 10 دقائق، ما دام اللاعب لم يلعب بعدها.
+        </p>
+        {logMsg && <p className={logMsg.ok ? "success" : "error"}>{logMsg.text}</p>}
         {dash.transfers.length === 0 && <p className="muted">لا حركات بعد.</p>}
         <ul className={styles.log}>
           {dash.transfers.map((t) => (
@@ -111,7 +123,13 @@ export default function AgentPage() {
                 <div className="muted">
                   {fmtWhen(t.created_at)} · <span className={`num ${styles.ref}`}>{t.ref}</span>
                   {t.note ? ` · ${t.note}` : ""}
+                  {t.cancelled && " · أُلغيت"}
                 </div>
+                {t.can_cancel && canAct && (
+                  <button type="button" className={admin.linkish} onClick={() => cancelGift(t.ref, t.other_name, t.amount)}>
+                    إلغاء هذه الهدية
+                  </button>
+                )}
               </div>
               <div className={styles.amounts}>
                 <span className={`num ${t.outgoing ? styles.out : styles.in}`}>

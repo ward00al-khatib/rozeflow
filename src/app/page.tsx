@@ -26,6 +26,7 @@ export default function Home() {
   const router = useRouter();
   const [linkError, setLinkError] = useState<string | null>(null);
   const uid = member.status === "member" ? member.profile.user_id : null;
+  const isAgent = member.status === "member" && member.agent; // agents hand out points and never play
   const stats = useMyStats(uid);
 
   // Supabase sends failed email links back as #error=...&error_code=... (e.g. otp_expired).
@@ -94,12 +95,19 @@ export default function Home() {
                 </svg>
               </Link>
             </section>
-            <DailyBonus userId={uid} />
+            {isAgent ? (
+              <Link href="/agent/" className={styles.boardLink}>
+                صفحة الوكالة: توزيع النقاط المجانية
+              </Link>
+            ) : (
+              <DailyBonus userId={uid} />
+            )}
           </div>
           <BigWinTicker userId={uid} />
         </>
       )}
 
+      {!isAgent && (
       <ul className={styles.games}>
         {GAMES.map((g, i) => (
           <li key={g.id} className={g.wide ? styles.wide : undefined} style={{ animationDelay: `${i * 70}ms` }}>
@@ -126,6 +134,7 @@ export default function Home() {
           </li>
         ))}
       </ul>
+      )}
 
       <p className={styles.note}>الألعاب متاحة الآن بنقاط تجريبية تبقى في متصفحك. الدخول بالدعوة فقط.</p>
     </main>

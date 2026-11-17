@@ -1,6 +1,6 @@
 /** Agents who hand out free points (spec appendix س). Points have no price and cannot be withdrawn. */
 
-export type TransferKind = "GRANT" | "REVOKE" | "PASS" | "RECLAIM" | "GIFT";
+export type TransferKind = "GRANT" | "REVOKE" | "PASS" | "RECLAIM" | "GIFT" | "CANCEL";
 
 export interface AgentTransfer {
   id: number;
@@ -13,6 +13,8 @@ export interface AgentTransfer {
   outgoing: boolean;
   other_name: string;
   other_no: number | null;
+  cancelled?: boolean;
+  can_cancel?: boolean;
 }
 
 export interface SubAgent {
@@ -68,7 +70,7 @@ export interface OwnerTransferRow {
 }
 
 export interface AgentOverview {
-  totals: { granted: number; revoked: number; gifted: number; players: number };
+  totals: { granted: number; revoked: number; gifted: number; cancelled?: number; players: number };
   outstanding: number;
   agents: OwnerAgentRow[];
   transfers: OwnerTransferRow[];
@@ -80,6 +82,7 @@ export const KIND_LABELS: Record<TransferKind, string> = {
   PASS: "تمرير لوكيل فرعي",
   RECLAIM: "استرجاع من وكيل فرعي",
   GIFT: "هدية للاعب",
+  CANCEL: "إلغاء هدية",
 };
 
 export const STATUS_LABELS: Record<OwnerAgentRow["status"], string> = {
@@ -108,6 +111,11 @@ export const AGENT_ERRORS: Record<string, string> = {
   NOTHING_TO_RECLAIM: "لا توجد حصة متبقية لاسترجاعها.",
   RATE_LIMITED: "عمليات كثيرة خلال دقيقة. انتظر قليلاً.",
   OWNER_ONLY: "هذا لمالك الموقع فقط.",
+  PLAYER_IS_AGENT: "هذا الحساب وكيل، والوكلاء لا يلعبون فلا يستقبلون نقاطاً.",
+  GIFT_NOT_FOUND: "لا توجد هدية منك بهذا الرقم المرجعي.",
+  CANCEL_TOO_LATE: "مضت أكثر من 10 دقائق على الهدية، فلا يمكن إلغاؤها.",
+  POINTS_USED: "اللاعب لعب بعد الهدية أو لم يعد رصيده يكفي، فلا يمكن إلغاؤها.",
+  AGENT_NO_PLAY: "حساب الوكيل لا يلعب.",
   DEVICE_NOT_APPROVED: "هذا الجهاز ينتظر موافقة المالك.",
   DEVICE_BLOCKED: "هذا الجهاز موقوف.",
   DEVICE_UNKNOWN: "حدّث الصفحة ثم حاول مرة أخرى.",

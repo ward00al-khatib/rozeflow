@@ -6,6 +6,7 @@ import { Card, Shell } from "@/components/Shell";
 import { formatPoints } from "@/lib/points";
 import { siteUrl, supabase } from "@/lib/supabase/client";
 import { useMember } from "@/lib/useMember";
+import { Agents } from "./Agents";
 import { BonusSetting } from "./BonusSetting";
 import { Devices } from "./Devices";
 import { InviteLinks } from "./InviteLinks";
@@ -57,6 +58,7 @@ const ADMIN_ERRORS: Record<string, string> = {
 
 interface MemberRow {
   user_id: string;
+  player_no: number | null;
   display_name: string;
   role: string;
   status: string;
@@ -90,7 +92,7 @@ export default function AdminPage() {
   const loadMembers = useCallback(async () => {
     const { data } = await supabase()
       .from("profiles")
-      .select("user_id, display_name, role, status, created_at, wallet_accounts(available, reserved)")
+      .select("user_id, player_no, display_name, role, status, created_at, wallet_accounts(available, reserved)")
       .order("created_at");
     setMembers((data ?? []) as unknown as MemberRow[]);
   }, []);
@@ -324,6 +326,8 @@ export default function AdminPage() {
 
       <BonusSetting />
 
+      <Agents />
+
       <Card title="سجل تغييرات العائد">
         <RtpHistory reloadKey={logKey} />
       </Card>
@@ -353,6 +357,7 @@ export default function AdminPage() {
             <li key={m.user_id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: "1px solid var(--rule)" }}>
               <span>
                 {m.display_name}
+                {m.player_no !== null && <span className="num muted">{"\u00a0#"}{m.player_no}</span>}
                 {m.role === "owner" && <span className="muted"> · المالك</span>}
                 {m.status !== "active" && <span className="muted"> · {m.status === "paused" ? "موقوف" : m.status}</span>}
               </span>

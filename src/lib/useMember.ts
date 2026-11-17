@@ -15,7 +15,7 @@ export type MemberState =
   | { status: "loading" }
   | { status: "signed_out" }
   | { status: "needs_join"; session: Session }
-  | { status: "member"; session: Session; profile: Profile; device: DeviceStatus };
+  | { status: "member"; session: Session; profile: Profile; device: DeviceStatus; agent: boolean };
 
 /** Members play with real points only from a device the owner approved (spec appendix ط). */
 export function playsReal(member: MemberState): member is Extract<MemberState, { status: "member" }> {
@@ -32,12 +32,15 @@ export function useMember(): MemberState & { refresh: () => void } {
 
   const load = useCallback(async (session: Session | null) => {
     if (!session) return setState({ status: "signed_out" });
-    const [{ data }, device] = await Promise.all([
+    const [{ data }, device, agentRow] = await Promise.all([
       supabase().from("profiles").select("user_id, display_name, role, status").eq("user_id", session.user.id).maybeSingle(),
       registerDevice(session.access_token),
+      // agents who hand out free points get a link to their panel (spec appendix س); errors just hide the link
+      supabase().from("agents").select("status").eq("user_id", session.user.id).maybeSingle(),
     ]);
+    const agent = !!agentRow.data && (agentRow.data as { status: string }).status !== "closed";
     setState(
-      data ? { status: "member", session, profile: data as Profile, device } : { status: "needs_join", session },
+      data ? { status: "member", session, profile: data as Profile, device, agent } : { status: "needs_join", session },
     );
   }, []);
 

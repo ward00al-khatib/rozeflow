@@ -18,6 +18,7 @@ export function Shell({ member, children, wide }: { member: MemberState; childre
         <nav className={styles.nav}>
           {signedIn && <Link href="/wallet/">المحفظة</Link>}
           {signedIn && <Link href="/player/">ملفي</Link>}
+          {signedIn && member.agent && <Link href="/agent/">الوكالة</Link>}
           {signedIn && member.profile.role === "owner" && <Link href="/admin/">الإدارة</Link>}
           {member.status === "signed_out" && <Link href="/login/">الدخول</Link>}
           {member.status !== "signed_out" && member.status !== "loading" && (

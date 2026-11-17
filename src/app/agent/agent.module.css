@@ -1,0 +1,87 @@
+.allowance {
+  font-size: clamp(34px, 9vw, 48px);
+  line-height: 1.1;
+  color: var(--signal-2);
+}
+
+.found {
+  margin: -4px 0 12px;
+  font-size: 14px;
+}
+
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -4px 0 14px;
+}
+
+.quick button {
+  padding: 5px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--hair);
+  background: var(--smoke);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  margin-top: 12px;
+  border-radius: 12px;
+  background: var(--smoke);
+  border: 1px solid var(--signal);
+}
+
+.rule {
+  font-size: 13.5px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--smoke);
+  border: 1px solid var(--hair);
+}
+
+.log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.log li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.log li > div:first-child {
+  min-width: 0;
+}
+
+.amounts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.in {
+  color: var(--win);
+}
+
+.out {
+  color: var(--ink-2);
+}
+
+.ref {
+  font-size: 12px;
+  direction: ltr;
+  unicode-bidi: isolate;
+}

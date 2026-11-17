@@ -18,6 +18,7 @@ export const LEDGER_LABELS: Record<string, string> = {
   ADMIN_ADJUSTMENT: "تعديل إداري",
   REVERSAL: "قيد عكسي",
   DAILY_BONUS: "المكافأة اليومية",
+  AGENT_GIFT: "نقاط مجانية من وكيل",
 };
 
 /** Signed effect of a ledger entry on the available balance (spec 5.2). */

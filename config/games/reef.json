@@ -1,0 +1,203 @@
+{
+ "game_id": "reef",
+ "config_version": 1,
+ "ruleset_version": "1.0.0",
+ "units": "centi_points",
+ "stake_limits": {
+  "min": 1000,
+  "max": 100000,
+  "multiple_of": 10
+ },
+ "rules": {
+  "reels": 3,
+  "rows": 3,
+  "derivation": "one unbiased_integer(len(strip)) per reel = index of the top visible symbol; rows wrap around. Free spins draw their stops from the same stream, three per spin, after the base spin.",
+  "symbols": {
+   "high": [
+    "puffer",
+    "octo",
+    "crab"
+   ],
+   "low": [
+    "jelly",
+    "star",
+    "shell"
+   ],
+   "wild": "pearl",
+   "scatter": "chest"
+  },
+  "wild_substitutes": "every symbol except the chest; three wilds on a line pay the wild line",
+  "strips": [
+   [
+    "star",
+    "crab",
+    "jelly",
+    "crab",
+    "octo",
+    "jelly",
+    "star",
+    "shell",
+    "puffer",
+    "star",
+    "pearl",
+    "octo",
+    "shell",
+    "crab",
+    "jelly",
+    "chest",
+    "octo",
+    "puffer",
+    "pearl",
+    "shell",
+    "star",
+    "shell",
+    "crab",
+    "star",
+    "chest",
+    "shell",
+    "star",
+    "jelly",
+    "shell",
+    "jelly"
+   ],
+   [
+    "pearl",
+    "shell",
+    "star",
+    "jelly",
+    "crab",
+    "chest",
+    "crab",
+    "shell",
+    "jelly",
+    "crab",
+    "shell",
+    "star",
+    "shell",
+    "jelly",
+    "pearl",
+    "shell",
+    "star",
+    "jelly",
+    "puffer",
+    "star",
+    "jelly",
+    "puffer",
+    "shell",
+    "star",
+    "octo",
+    "chest",
+    "octo",
+    "crab",
+    "star",
+    "octo"
+   ],
+   [
+    "octo",
+    "star",
+    "crab",
+    "jelly",
+    "puffer",
+    "star",
+    "jelly",
+    "star",
+    "pearl",
+    "crab",
+    "star",
+    "jelly",
+    "pearl",
+    "shell",
+    "octo",
+    "shell",
+    "crab",
+    "shell",
+    "jelly",
+    "puffer",
+    "shell",
+    "star",
+    "octo",
+    "chest",
+    "star",
+    "jelly",
+    "shell",
+    "crab",
+    "shell",
+    "chest"
+   ]
+  ],
+  "lines": [
+   [
+    0,
+    0,
+    0
+   ],
+   [
+    1,
+    1,
+    1
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    0,
+    1,
+    2
+   ],
+   [
+    2,
+    1,
+    0
+   ]
+  ],
+  "line_rule": "three of the same symbol on a line (wild stands in); a chest on a line breaks it; one win per line",
+  "free_spins": {
+   "trigger_scatters": 3,
+   "spins": 8,
+   "start_multiplier": 1,
+   "multiplier_step_per_scatter": 1,
+   "max_multiplier": 20,
+   "retrigger_scatters": 3,
+   "retrigger_spins": 5,
+   "max_total_spins": 28,
+   "same_strips": true,
+   "order": "a free spin pays at the current multiplier; then each chest it shows adds the step (up to the maximum), and three chests add retrigger_spins while the total stays within max_total_spins"
+  }
+ },
+ "payout_model": {
+  "line_bet": "stake / 5 (all five lines always play)",
+  "pays": {
+   "pearl": 200,
+   "puffer": 50,
+   "octo": 25,
+   "crab": 18,
+   "jelly": 12,
+   "star": 7,
+   "shell": 5
+  },
+  "pays_note": "line bets for three of a kind",
+  "table_rtp": {
+   "num": "445947216355679684440426380288825776438749342374916493597605693",
+   "den": "465289094561078067115167389289354105130769312381744384765625000"
+  },
+  "rtp_scaling": "every spin's win is multiplied by target_rtp / table_rtp and floored to a centi-point",
+  "par": {
+   "base_rtp": "21137/27000",
+   "base_hit_frequency": 0.272704,
+   "base_max_line_bet_units": 250,
+   "free_spins_one_in": 125,
+   "avg_free_spins": 8.33,
+   "avg_free_multiplier": 3.36,
+   "max_round_line_bet_units": 122750
+  },
+  "max_gross_payout": 2600000000,
+  "target_rtp_bp": 9600,
+  "declared_rtp": "0.958430 (exact table_rtp; reefExactRtp in src/lib/games/reef.ts)"
+ },
+ "fairness": {
+  "rng_algorithm_version": "1.0",
+  "game_domain": "rozeflow:v1:reef"
+ }
+}

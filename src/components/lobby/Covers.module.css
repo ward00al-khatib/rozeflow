@@ -57,6 +57,35 @@
   }
 }
 
+/* Bubble Reef: shorter symbols, so a shorter roll; bubbles rise and fade. */
+.reefReel {
+  animation-name: rollReef;
+}
+
+@keyframes rollReef {
+  to {
+    transform: translateY(-232px);
+  }
+}
+
+.rise {
+  animation: rise 3.4s ease-in infinite;
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-70px);
+    opacity: 0;
+  }
+}
+
 /* Crash: the curve draws itself while the rocket rides it, then the scene resets. */
 .trace {
   stroke-dasharray: 100;

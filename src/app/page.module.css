@@ -146,6 +146,15 @@
   aspect-ratio: 16 / 8;
 }
 
+/* The newest game spans the whole row as a banner. */
+.feature {
+  grid-column: 1 / -1;
+}
+
+.wide.feature .art {
+  aspect-ratio: 16 / 5;
+}
+
 .art > svg {
   transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
@@ -247,7 +256,8 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
-  .wide .art {
+  .wide .art,
+  .wide.feature .art {
     aspect-ratio: 16 / 9;
   }
   .meta {

@@ -12,7 +12,8 @@ import { LevelBadge } from "@/components/social/LevelBadge";
 import { useMyStats } from "@/lib/social";
 import styles from "./page.module.css";
 
-const GAMES: Array<{ id: GameId; name: string; tag: string; fact: [string, string]; wide?: boolean }> = [
+const GAMES: Array<{ id: GameId; name: string; tag: string; fact: [string, string]; wide?: boolean; feature?: boolean }> = [
+  { id: "reef", name: "شعاب الفقاعات · جديدة", tag: "سلوتس 3×3 تحت البحر · بونص بمضاعف حتى ×20 ولفّات إضافية", fact: ["مضاعف", "×20"], wide: true, feature: true },
   { id: "slots", name: "السلوتس", tag: "مختبر الليل · لفّات مجانية بمضاعف يكبر", fact: ["عائد", "95.8%"], wide: true },
   { id: "crash", name: "كراش", tag: "حصّل قبل الانهيار", fact: ["حتى", "1,000×"], wide: true },
   { id: "dice", name: "النرد", tag: "اختر فرصتك", fact: ["عائد", "99%"] },
@@ -71,7 +72,7 @@ export default function Home() {
           <span>ROZE</span>
           <span className={styles.flow}>FLOW</span>
         </h1>
-        <p className={styles.lede}>ست ألعاب بنقاط افتراضية فقط، ونتائج يمكنك التحقق منها بنفسك.</p>
+        <p className={styles.lede}>سبع ألعاب بنقاط افتراضية فقط، ونتائج يمكنك التحقق منها بنفسك.</p>
         <DeviceNotice member={member} />
         {linkError && (
           <p className="error" role="alert">
@@ -110,10 +111,10 @@ export default function Home() {
       {!isAgent && (
       <ul className={styles.games}>
         {GAMES.map((g, i) => (
-          <li key={g.id} className={g.wide ? styles.wide : undefined} style={{ animationDelay: `${i * 70}ms` }}>
+          <li key={g.id} className={g.feature ? `${styles.wide} ${styles.feature}` : g.wide ? styles.wide : undefined} style={{ animationDelay: `${i * 70}ms` }}>
             <Link href={`/games/${g.id}/`} className={styles.card}>
               <span className={styles.art}>
-                <GameCover game={g.id} />
+                <GameCover game={g.id} wide={g.feature} />
               </span>
               <span className={styles.meta}>
                 <span className={styles.text}>

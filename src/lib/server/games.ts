@@ -3,6 +3,7 @@ import type { CrashBet, CrashOutcome } from "../games/crash";
 import type { MinesBet, MinesOutcome } from "../games/mines";
 import type { PlinkoBet, PlinkoOutcome } from "../games/plinko";
 import type { RouletteBet, RouletteOutcome } from "../games/roulette";
+import { reefEvaluate, type ReefBet, type ReefOutcome } from "../games/reef";
 import { evaluate, type SlotsBet, type SlotsOutcome } from "../games/slots";
 import { useServerRounds, type ServerGame } from "./rounds";
 
@@ -85,3 +86,32 @@ const SLOTS: ServerGame<SlotsBet, SlotsOutcome> = {
 };
 
 export const useServerSlots = (userId: string | null) => useServerRounds(userId, SLOTS);
+
+interface ServerReefSpin {
+  stops: number[];
+  multiplier?: number;
+  added?: number;
+}
+
+const REEF: ServerGame<ReefBet, ReefOutcome> = {
+  game: "reef",
+  rpc: "play_reef",
+  args: (bet) => ({ p_stake: bet.stake }),
+  // The server stores the reel stops; the window and the winning lines follow from them.
+  parse: (o, _stake, gross) => ({
+    bet: { stake: Number(o.bet_stake) },
+    outcome: {
+      base: reefEvaluate((o.base as ServerReefSpin).stops),
+      freeSpins: ((o.free_spins as ServerReefSpin[]) ?? []).map((f) => ({
+        ...reefEvaluate(f.stops),
+        multiplier: Number(f.multiplier),
+        added: Number(f.added ?? 0),
+      })),
+      baseGross: Number(o.base_gross),
+      freeGross: Number(o.free_gross),
+      gross,
+    },
+  }),
+};
+
+export const useServerReef = (userId: string | null) => useServerRounds(userId, REEF);

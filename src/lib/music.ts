@@ -6,7 +6,7 @@
  * It plays only while sound is on, the music toggle is on and the tab is visible.
  */
 
-export type MusicTheme = "dice" | "roulette" | "plinko" | "mines" | "crash" | "slots" | "reef";
+export type MusicTheme = "dice" | "roulette" | "plinko" | "mines" | "crash" | "slots" | "reef" | "bolt";
 
 interface Theme {
   bpm: number;
@@ -34,6 +34,8 @@ export const THEMES: Record<MusicTheme, Theme> = {
   slots: { bpm: 96, root: 52, chords: [[0, 3, 7, 10], [1, 5, 8, 13], [0, 3, 7, 12], [-2, 1, 5, 8]], pad: "sawtooth", lead: "triangle", density: 0.4, cutoff: 1000, pulse: false },
   // Bubble Reef: sunny island major, bouncy plucks
   reef: { bpm: 116, root: 55, chords: [[0, 4, 7, 12], [5, 9, 12, 16], [-3, 0, 4, 9], [7, 11, 14, 17]], pad: "triangle", lead: "sine", density: 0.55, cutoff: 1800, pulse: true },
+  // Little Bolt: playful chiptune in mixolydian, square-wave bleeps over a soft pulse
+  bolt: { bpm: 112, root: 50, chords: [[0, 4, 7, 10], [-2, 2, 5, 9], [5, 9, 12, 16], [3, 7, 10, 14]], pad: "triangle", lead: "square", density: 0.6, cutoff: 1500, pulse: true },
 };
 
 const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);

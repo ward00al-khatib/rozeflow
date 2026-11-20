@@ -3,6 +3,7 @@ import type { CrashBet, CrashOutcome } from "../games/crash";
 import type { MinesBet, MinesOutcome } from "../games/mines";
 import type { PlinkoBet, PlinkoOutcome } from "../games/plinko";
 import type { RouletteBet, RouletteOutcome } from "../games/roulette";
+import { boltEvaluate, type BoltBet, type BoltOutcome } from "../games/bolt";
 import { reefEvaluate, type ReefBet, type ReefOutcome } from "../games/reef";
 import { evaluate, type SlotsBet, type SlotsOutcome } from "../games/slots";
 import { useServerRounds, type ServerGame } from "./rounds";
@@ -115,3 +116,32 @@ const REEF: ServerGame<ReefBet, ReefOutcome> = {
 };
 
 export const useServerReef = (userId: string | null) => useServerRounds(userId, REEF);
+
+interface ServerBoltSpin {
+  stops: number[];
+  multiplier?: number;
+  added?: number;
+}
+
+const BOLT: ServerGame<BoltBet, BoltOutcome> = {
+  game: "bolt",
+  rpc: "play_bolt",
+  args: (bet) => ({ p_stake: bet.stake }),
+  // The server stores the reel stops; the window and the winning lines follow from them.
+  parse: (o, _stake, gross) => ({
+    bet: { stake: Number(o.bet_stake) },
+    outcome: {
+      base: boltEvaluate((o.base as ServerBoltSpin).stops),
+      freeSpins: ((o.free_spins as ServerBoltSpin[]) ?? []).map((f) => ({
+        ...boltEvaluate(f.stops),
+        multiplier: Number(f.multiplier),
+        added: Number(f.added ?? 0),
+      })),
+      baseGross: Number(o.base_gross),
+      freeGross: Number(o.free_gross),
+      gross,
+    },
+  }),
+};
+
+export const useServerBolt = (userId: string | null) => useServerRounds(userId, BOLT);

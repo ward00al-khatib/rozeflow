@@ -1,0 +1,354 @@
+{
+ "game_id": "bolt",
+ "config_version": 1,
+ "ruleset_version": "1.0.0",
+ "units": "centi_points",
+ "stake_limits": {
+  "min": 1000,
+  "max": 100000,
+  "multiple_of": 10
+ },
+ "rules": {
+  "reels": 5,
+  "rows": 3,
+  "derivation": "one unbiased_integer(len(strip)) per reel = index of the top visible symbol; rows wrap around. Free spins draw their stops from the same stream, five per spin, after the base spin.",
+  "symbols": {
+   "high": [
+    "rocket",
+    "magnet",
+    "bulb"
+   ],
+   "low": [
+    "gear",
+    "nut",
+    "spring"
+   ],
+   "wild": "bot",
+   "scatter": "core"
+  },
+  "wild_substitutes": "every symbol except the core; a run of wilds from the left pays the wild line when that is larger",
+  "strips": [
+   [
+    "gear",
+    "nut",
+    "spring",
+    "bulb",
+    "spring",
+    "rocket",
+    "nut",
+    "bulb",
+    "nut",
+    "nut",
+    "spring",
+    "core",
+    "magnet",
+    "spring",
+    "gear",
+    "nut",
+    "gear",
+    "rocket",
+    "spring",
+    "spring",
+    "magnet",
+    "rocket",
+    "gear",
+    "bot",
+    "gear",
+    "spring",
+    "bulb",
+    "bot",
+    "nut",
+    "gear",
+    "bulb",
+    "magnet"
+   ],
+   [
+    "gear",
+    "nut",
+    "magnet",
+    "spring",
+    "bot",
+    "gear",
+    "bulb",
+    "spring",
+    "nut",
+    "spring",
+    "spring",
+    "bot",
+    "rocket",
+    "spring",
+    "gear",
+    "nut",
+    "magnet",
+    "core",
+    "gear",
+    "magnet",
+    "rocket",
+    "nut",
+    "nut",
+    "gear",
+    "nut",
+    "spring",
+    "bulb",
+    "gear",
+    "bulb",
+    "spring",
+    "bulb",
+    "rocket"
+   ],
+   [
+    "gear",
+    "spring",
+    "gear",
+    "rocket",
+    "bot",
+    "spring",
+    "gear",
+    "bulb",
+    "rocket",
+    "spring",
+    "spring",
+    "magnet",
+    "gear",
+    "magnet",
+    "bulb",
+    "nut",
+    "core",
+    "magnet",
+    "nut",
+    "nut",
+    "nut",
+    "gear",
+    "bulb",
+    "bulb",
+    "nut",
+    "spring",
+    "spring",
+    "bot",
+    "spring",
+    "nut",
+    "gear",
+    "rocket"
+   ],
+   [
+    "nut",
+    "spring",
+    "gear",
+    "nut",
+    "gear",
+    "bulb",
+    "gear",
+    "spring",
+    "spring",
+    "core",
+    "gear",
+    "spring",
+    "gear",
+    "magnet",
+    "nut",
+    "spring",
+    "rocket",
+    "rocket",
+    "rocket",
+    "bot",
+    "spring",
+    "magnet",
+    "spring",
+    "magnet",
+    "nut",
+    "bulb",
+    "bulb",
+    "nut",
+    "nut",
+    "bot",
+    "bulb",
+    "gear"
+   ],
+   [
+    "gear",
+    "core",
+    "rocket",
+    "magnet",
+    "gear",
+    "spring",
+    "bulb",
+    "nut",
+    "rocket",
+    "nut",
+    "bot",
+    "gear",
+    "magnet",
+    "spring",
+    "rocket",
+    "gear",
+    "nut",
+    "spring",
+    "nut",
+    "bulb",
+    "nut",
+    "nut",
+    "spring",
+    "spring",
+    "spring",
+    "bulb",
+    "bulb",
+    "gear",
+    "spring",
+    "gear",
+    "magnet",
+    "bot"
+   ]
+  ],
+  "lines": [
+   [
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    2,
+    2,
+    2,
+    2,
+    2
+   ],
+   [
+    0,
+    1,
+    2,
+    1,
+    0
+   ],
+   [
+    2,
+    1,
+    0,
+    1,
+    2
+   ],
+   [
+    0,
+    0,
+    1,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    1,
+    0,
+    0
+   ],
+   [
+    1,
+    0,
+    0,
+    0,
+    1
+   ],
+   [
+    1,
+    2,
+    2,
+    2,
+    1
+   ],
+   [
+    0,
+    1,
+    1,
+    1,
+    0
+   ]
+  ],
+  "line_rule": "pays from the leftmost reel: 3, 4 or 5 of the same symbol in a row (wild stands in); a core breaks the line; one win per line, the larger of the symbol run and the leading wild run",
+  "free_spins": {
+   "trigger_scatters": 3,
+   "spins_by_scatters": {
+    "3": 10,
+    "4": 12,
+    "5": 15
+   },
+   "start_multiplier": 1,
+   "multiplier_step_per_wild": 1,
+   "max_multiplier": 15,
+   "retrigger_scatters": 3,
+   "retrigger_spins": 5,
+   "max_total_spins": 30,
+   "same_strips": true,
+   "order": "a free spin pays at the current multiplier; then each wild it shows adds the step (up to the maximum), and three or more cores add retrigger_spins while the total stays within max_total_spins"
+  }
+ },
+ "payout_model": {
+  "line_bet": "stake / 10 (all ten lines always play)",
+  "pays": {
+   "bot": [
+    40,
+    200,
+    1000
+   ],
+   "rocket": [
+    20,
+    80,
+    400
+   ],
+   "magnet": [
+    12,
+    50,
+    200
+   ],
+   "bulb": [
+    10,
+    30,
+    120
+   ],
+   "gear": [
+    4,
+    12,
+    50
+   ],
+   "nut": [
+    3,
+    10,
+    40
+   ],
+   "spring": [
+    3,
+    6,
+    25
+   ]
+  },
+  "pays_note": "line bets for 3, 4 and 5 in a row from the left",
+  "table_rtp": {
+   "num": "169914555848326859442931622132775321308911265714251923401873261887388642647816287293342656082827296142987884568089282219896193003836576817025658004811772286667239038586428326588853696063246660756038235763497231278414257",
+   "den": "176500872419263593559319302637789241459459619490723595292712620678918364397574906244117120062201874810681116593642749786132706054117399434226659568030434131651924755717669757535789504530793970482734834967427158147858432"
+  },
+  "rtp_scaling": "every spin's win is multiplied by target_rtp / table_rtp and floored to a centi-point",
+  "par": {
+   "base_rtp": "22893441/33554432",
+   "base_hit_frequency": 0.432953,
+   "base_max_line_bet_units": 1828,
+   "free_spins_one_in": 140.36,
+   "avg_free_spins": 10.48,
+   "avg_free_multiplier": 5.51,
+   "max_round_line_bet_units": 824428
+  },
+  "max_gross_payout": 8500000000,
+  "target_rtp_bp": 9600,
+  "declared_rtp": "0.962684 (exact table_rtp; boltExactRtp in src/lib/games/bolt.ts)"
+ },
+ "fairness": {
+  "rng_algorithm_version": "1.0",
+  "game_domain": "rozeflow:v1:bolt"
+ }
+}

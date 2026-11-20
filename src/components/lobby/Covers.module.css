@@ -68,6 +68,54 @@
   }
 }
 
+/* Little Bolt: small reels roll; the robot hops, waves and blinks. */
+.boltReel {
+  animation-name: rollBolt;
+}
+
+@keyframes rollBolt {
+  to {
+    transform: translateY(-144px);
+  }
+}
+
+.robotHop {
+  animation: robotHop 1.6s ease-in-out infinite;
+}
+
+@keyframes robotHop {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.wave {
+  transform-origin: 28px 140px;
+  animation: armWave 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes armWave {
+  to {
+    transform: rotate(-24deg);
+  }
+}
+
+.blinkEyes {
+  transform-origin: 46px 107px;
+  animation: blinkEyes 3.4s infinite;
+}
+
+@keyframes blinkEyes {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
 .rise {
   animation: rise 3.4s ease-in infinite;
 }

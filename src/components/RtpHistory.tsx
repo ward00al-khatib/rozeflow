@@ -12,6 +12,7 @@ const GAME_NAMES: Record<string, string> = {
   crash: "كراش",
   slots: "السلوتس",
   reef: "شعاب الفقاعات",
+  bolt: "بُرغي الصغير",
 };
 
 const fmtDate = (iso: string | null) =>

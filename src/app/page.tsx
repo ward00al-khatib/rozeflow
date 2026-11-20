@@ -13,7 +13,8 @@ import { useMyStats } from "@/lib/social";
 import styles from "./page.module.css";
 
 const GAMES: Array<{ id: GameId; name: string; tag: string; fact: [string, string]; wide?: boolean; feature?: boolean }> = [
-  { id: "reef", name: "شعاب الفقاعات · جديدة", tag: "سلوتس 3×3 تحت البحر · بونص بمضاعف حتى ×20 ولفّات إضافية", fact: ["مضاعف", "×20"], wide: true, feature: true },
+  { id: "bolt", name: "بُرغي الصغير · جديدة", tag: "سلوتس 5×3 مع روبوت الخردة · كل روبوت يشحن المضاعف حتى ×15", fact: ["مضاعف", "×15"], wide: true, feature: true },
+  { id: "reef", name: "شعاب الفقاعات", tag: "سلوتس 3×3 تحت البحر · بونص بمضاعف حتى ×20 ولفّات إضافية", fact: ["مضاعف", "×20"], wide: true },
   { id: "slots", name: "السلوتس", tag: "مختبر الليل · لفّات مجانية بمضاعف يكبر", fact: ["عائد", "95.8%"], wide: true },
   { id: "crash", name: "كراش", tag: "حصّل قبل الانهيار", fact: ["حتى", "1,000×"], wide: true },
   { id: "dice", name: "النرد", tag: "اختر فرصتك", fact: ["عائد", "99%"] },
@@ -72,7 +73,7 @@ export default function Home() {
           <span>ROZE</span>
           <span className={styles.flow}>FLOW</span>
         </h1>
-        <p className={styles.lede}>سبع ألعاب بنقاط افتراضية فقط، ونتائج يمكنك التحقق منها بنفسك.</p>
+        <p className={styles.lede}>ثماني ألعاب بنقاط افتراضية فقط، ونتائج يمكنك التحقق منها بنفسك.</p>
         <DeviceNotice member={member} />
         {linkError && (
           <p className="error" role="alert">

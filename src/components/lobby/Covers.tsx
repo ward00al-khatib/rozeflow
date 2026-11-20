@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import styles from "./Covers.module.css";
 
-export type GameId = "slots" | "reef" | "crash" | "dice" | "roulette" | "plinko" | "mines";
+export type GameId = "slots" | "bolt" | "reef" | "crash" | "dice" | "roulette" | "plinko" | "mines";
 
 /** `wide` widens the scene to 640×200 (centred on the usual 320×200), for a banner card. */
 function Frame({ id, from, to, children, wide }: { id: string; from: string; to: string; children: ReactNode; wide?: boolean }) {
@@ -101,6 +101,106 @@ function Slots() {
       {reel(129, styles.reelB, [atom, bolt, seven, gem])}
       {reel(202, styles.reelC, [gem, seven, bolt, atom])}
       <rect x="50" y="86" width="220" height="28" rx="6" fill="none" stroke="#3ddcff" strokeWidth="2" className={styles.pulse} filter="url(#cv-glow)" />
+    </Frame>
+  );
+}
+
+/** Little Bolt: our scrapyard robot waving beside a 5-reel machine at dusk, with sparks drifting up. */
+function Bolt({ wide }: { wide?: boolean }) {
+  const reel = (x: number, cls: string, items: ReactNode[]) => (
+    <g>
+      <rect x={x} y="58" width="36" height="108" rx="7" fill="#070d1d" stroke="#ffb27a" strokeWidth="1.5" />
+      <svg x={x} y="58" width="36" height="108" viewBox="0 0 36 108">
+        <g className={`${styles.reel} ${styles.boltReel} ${cls}`}>
+          {[...items, ...items].map((it, i) => (
+            <g key={i} transform={`translate(18 ${18 + i * 36})`}>
+              {it}
+            </g>
+          ))}
+        </g>
+      </svg>
+    </g>
+  );
+  const gear = (
+    <g>
+      <circle r="12" fill="none" stroke="#8fa0b8" strokeWidth="5" strokeDasharray="4.5 2.8" />
+      <circle r="8.5" fill="#8fa0b8" />
+      <circle r="3.5" fill="#3ddcff" />
+    </g>
+  );
+  const core = (
+    <g>
+      <path d="M0 -14l12 7v14L0 14l-12-7V-7z" fill="url(#cv-cyan)" stroke="#b5f4ff" strokeWidth="1.5" filter="url(#cv-glow)" />
+      <path d="M2 -9l-7 10h5l-2 8 8-11H1z" fill="#fff8d6" />
+    </g>
+  );
+  const rocket = (
+    <g>
+      <path d="M0 -14c6 5 8 14 6 22H-6c-2-8 0-17 6-22z" fill="#eef2f8" />
+      <path d="M0 -14c3 2 5 5 6 8H-6c1-3 3-6 6-8z" fill="#ef3f3f" />
+      <circle cy="-1" r="3" fill="#3ddcff" />
+      <path d="M-6 4l-5 7 5-1zM6 4l5 7-5-1z" fill="#ef3f3f" />
+    </g>
+  );
+  const head = (
+    <g>
+      <rect x="-13" y="-11" width="26" height="22" rx="8" fill="#eef2f8" />
+      <rect x="-9" y="-7" width="18" height="12" rx="5" fill="#0b1530" />
+      <rect x="-6" y="-4" width="3.5" height="6" rx="1.7" fill="#3ddcff" />
+      <rect x="2.5" y="-4" width="3.5" height="6" rx="1.7" fill="#3ddcff" />
+    </g>
+  );
+  const pile = (x: number, w: number, h: number) => <path d={`M${x} 200l${w * 0.2} -${h}l${w * 0.15} ${h * 0.4}l${w * 0.25} -${h * 0.7}l${w * 0.2} ${h * 0.5}l${w * 0.2} ${h * 0.8}z`} fill="#1c1430" />;
+  return (
+    <Frame id="bolt" from="#2a1748" to="#a1462f" wide={wide}>
+      <Stars pts={[[30, 20, 1.2], [120, 14, 1], [210, 24, 1.3], [290, 12, 1.1], [-120, 22, 1.2], [-40, 10, 1], [380, 18, 1.2], [450, 30, 1]]} />
+      <circle cx="268" cy="30" r="13" fill="#ffd9a0" opacity="0.85" />
+      {pile(-160, 200, 60)}
+      {pile(-20, 140, 40)}
+      {pile(250, 160, 50)}
+      {pile(360, 140, 70)}
+      <rect x="-160" y="192" width="640" height="8" fill="#0d0a1a" />
+      <g className={styles.robotHop}>
+        <circle cx="46" cy="176" r="10" fill="#1b2236" stroke="#8fa0b8" strokeWidth="2.5" />
+        <rect x="28" y="130" width="36" height="34" rx="9" fill="url(#cv-gold)" stroke="#7a2d0a" strokeWidth="1.5" />
+        <rect x="35" y="140" width="22" height="13" rx="3" fill="#0b1530" />
+        <rect x="38" y="143" width="4" height="7" rx="1" fill="#3ddcff" className={styles.pulse} />
+        <rect x="44" y="143" width="4" height="7" rx="1" fill="#3ddcff" className={styles.pulse} />
+        <rect x="50" y="143" width="4" height="7" rx="1" fill="#1d2a48" />
+        <path d="M28 140q-12 2-14 -12" stroke="#8fa0b8" strokeWidth="4" fill="none" strokeLinecap="round" className={styles.wave} />
+        <path d="M64 140q10 4 12 16" stroke="#8fa0b8" strokeWidth="4" fill="none" strokeLinecap="round" />
+        <path d="M46 92V80" stroke="#8fa0b8" strokeWidth="2.5" />
+        <circle cx="46" cy="78" r="4.5" fill="#ff8a3d" filter="url(#cv-glow)" className={styles.pulse} />
+        <circle cx="18" cy="110" r="6" fill="#8fa0b8" />
+        <circle cx="74" cy="110" r="6" fill="#8fa0b8" />
+        <rect x="20" y="88" width="52" height="44" rx="16" fill="#eef2f8" stroke="#33405a" strokeWidth="2" />
+        <rect x="27" y="95" width="38" height="27" rx="10" fill="#0b1530" />
+        <g className={styles.blinkEyes}>
+          <rect x="33" y="101" width="7" height="12" rx="3.5" fill="#3ddcff" filter="url(#cv-glow)" />
+          <rect x="52" y="101" width="7" height="12" rx="3.5" fill="#3ddcff" filter="url(#cv-glow)" />
+        </g>
+        <path d="M41 117q5 3 10 0" stroke="#3ddcff" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+      </g>
+      <rect x="92" y="48" width="214" height="128" rx="16" fill="#a8341f" stroke="#ffb27a" strokeWidth="2.5" />
+      {[0, 1, 2, 3, 4].map((i) => (
+        <circle key={i} cx={159 + i * 20} cy="53" r="2.2" fill="#ffd23d" className={styles.twinkle} style={{ animationDelay: `-${i * 0.3}s` }} />
+      ))}
+      {reel(100, styles.reelA, [gear, core, rocket, head])}
+      {reel(140, styles.reelB, [head, rocket, core, gear])}
+      {reel(180, styles.reelC, [core, gear, head, rocket])}
+      {reel(220, styles.reelA, [rocket, head, gear, core])}
+      {reel(260, styles.reelB, [gear, rocket, head, core])}
+      <rect x="96" y="94" width="206" height="36" rx="6" fill="none" stroke="#3ddcff" strokeWidth="2" className={styles.pulse} filter="url(#cv-glow)" />
+      {[
+        [110, 0],
+        [170, 1.2],
+        [240, 0.6],
+        [300, 2],
+        [-60, 1.5],
+        [420, 0.9],
+      ].map(([x, d], i) => (
+        <circle key={i} cx={x} cy="190" r="2" fill="#ffd23d" filter="url(#cv-glow)" className={styles.rise} style={{ animationDelay: `-${d}s` }} />
+      ))}
     </Frame>
   );
 }
@@ -336,7 +436,7 @@ function Mines() {
   );
 }
 
-const COVERS: Record<GameId, (p: { wide?: boolean }) => ReactNode> = { slots: Slots, reef: Reef, crash: Crash, dice: Dice, roulette: Roulette, plinko: Plinko, mines: Mines };
+const COVERS: Record<GameId, (p: { wide?: boolean }) => ReactNode> = { slots: Slots, bolt: Bolt, reef: Reef, crash: Crash, dice: Dice, roulette: Roulette, plinko: Plinko, mines: Mines };
 
 export function GameCover({ game, wide }: { game: GameId; wide?: boolean }) {
   const C = COVERS[game];

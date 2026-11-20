@@ -91,6 +91,28 @@ export function playSound(name: SoundName) {
   }
 }
 
+/**
+ * A game's own sound effect, drawn with the shared audio context. Plays only while sound is on;
+ * `buzz` is an optional vibration pattern for phones.
+ */
+export function playSfx(draw: (a: AudioContext) => void, buzz?: number | number[]) {
+  if (buzz !== undefined && typeof navigator !== "undefined" && "vibrate" in navigator) {
+    try {
+      navigator.vibrate(buzz);
+    } catch {
+      /* not allowed before a tap: skip */
+    }
+  }
+  if (!enabled) return;
+  const a = audio();
+  if (!a) return;
+  try {
+    draw(a);
+  } catch {
+    /* audio blocked: stay silent */
+  }
+}
+
 export function useSound() {
   const [on, setOn] = useState(false);
   useEffect(() => {
